@@ -14,7 +14,7 @@ export default defineConfig(
   prettierConfig,
   {
     rules: {
-      "no-console": "warn",
+      // "no-console": "warn",
       indent: ["error", 2],
     },
   },
