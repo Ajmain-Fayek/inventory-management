@@ -31,7 +31,7 @@ type RandomMode = "20bit" | "32bit" | "6digit" | "9digit";
 type DateFormat = "yyyy" | "yy" | "yyyyMM" | "yyyyMMdd" | "yyyyMMddHHmm";
 type Separator = "_" | "-";
 
-interface Segment {
+export interface Segment {
   id: string;
   type: SegmentType;
   value?: string;
@@ -62,8 +62,10 @@ export interface CustomIdValues {
 }
 
 interface CustomIdBuilderProps {
+  /** Controlled segment list — lives in the parent to survive tab switches */
+  items: Segment[];
+  onItemsChange: (items: Segment[]) => void;
   onChange?: (values: CustomIdValues) => void;
-  defaultItems?: Segment[];
 }
 
 /* ========= GENERATORS ========= */
@@ -121,10 +123,8 @@ function generateSequence(format: string = "D"): string {
 
 const MAX_ITEMS = 4;
 
-export default function CustomIdBuilder({ onChange, defaultItems }: CustomIdBuilderProps) {
-  const [items, setItems] = useState<Segment[]>(
-    defaultItems ?? [{ id: "1", type: "fixed", value: "📚", separator: "_" }],
-  );
+export default function CustomIdBuilder({ items, onItemsChange, onChange }: CustomIdBuilderProps) {
+  // items is fully controlled by parent — no local state here
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isOverDelete, setIsOverDelete] = useState(false);
@@ -179,20 +179,19 @@ export default function CustomIdBuilder({ onChange, defaultItems }: CustomIdBuil
     setActiveId(null);
     pointerOutside.current = false;
 
-    // If pointer ended outside the builder container → remove
+    // If pointer ended outside the builder container -> remove
     if (wasOutside) {
-      setItems((prev) => prev.filter((i) => i.id !== String(active.id)));
+      onItemsChange(items.filter((i) => i.id !== String(active.id)));
       return;
     }
 
     // Reordering within list
     if (over && active.id !== over.id) {
-      setItems((prev) => {
-        const oldIndex = prev.findIndex((i) => i.id === String(active.id));
-        const newIndex = prev.findIndex((i) => i.id === String(over.id));
-        if (oldIndex === -1 || newIndex === -1) return prev;
-        return arrayMove(prev, oldIndex, newIndex);
-      });
+      const oldIndex = items.findIndex((i) => i.id === String(active.id));
+      const newIndex = items.findIndex((i) => i.id === String(over.id));
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onItemsChange(arrayMove(items, oldIndex, newIndex));
+      }
     }
   }
 
@@ -207,25 +206,22 @@ export default function CustomIdBuilder({ onChange, defaultItems }: CustomIdBuil
   /* ========= HELPERS ========= */
 
   const updateSegment = (id: string, updates: Partial<Segment>) => {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+    onItemsChange(items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
   };
 
   const removeSegment = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    onItemsChange(items.filter((i) => i.id !== id));
   };
 
   const addSegment = () => {
     if (items.length >= MAX_ITEMS) return;
-
-    // Try to add a type that doesn't already exist (prefer fixed since it allows duplicates)
-    const nextType: SegmentType = "fixed";
     const newSeg: Segment = {
       id: crypto.randomUUID(),
-      type: nextType,
+      type: "fixed",
       value: "",
       separator: "_",
     };
-    setItems((prev) => [...prev, newSeg]);
+    onItemsChange([...items, newSeg]);
     setDuplicateWarning(null);
   };
 

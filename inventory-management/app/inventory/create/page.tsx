@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { categoryService } from "@/services/category.service";
 import TagInput from "../_components/TagInput";
-import CustomIdBuilder from "../_components/CustomIdBuilder";
+import CustomIdBuilder, { CustomIdValues, Segment } from "../_components/CustomIdBuilder";
 
 export default function CreateInventoryPage() {
   const { t } = useLanguage();
@@ -41,6 +41,20 @@ export default function CreateInventoryPage() {
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [category, setCategory] = useState<string>("");
+  const [customIdValues, setCustomIdValues] = useState<CustomIdValues>({
+    fixedValueState: true,
+    fixedValue: "📚",
+    fixedPosition: 0,
+    sequenceValueState: false,
+    randomValueState: false,
+    datetimeValueState: false,
+  });
+  // Lifted here so HeroUI Tabs unmounting the panel doesn't wipe the builder state
+  const [customIdItems, setCustomIdItems] = useState<Segment[]>([
+    { id: crypto.randomUUID(), type: "fixed", value: "📚", separator: "_" },
+  ]);
+
+  console.log(customIdItems, customIdValues);
 
   const getCategories = async () => {
     const categories = await categoryService.getCategories();
@@ -106,19 +120,19 @@ export default function CreateInventoryPage() {
               />
               <Select
                 label={t("inventory.create.generalSettings.category")}
-                defaultSelectedKeys={["0"]}
+                defaultSelectedKeys={[category]}
                 variant="bordered"
                 className="w-full"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
-                <SelectItem isReadOnly={true} key="0">
+                <SelectItem isReadOnly={true} key="">
                   {t("inventory.create.generalSettings.category.placeholder")}
                 </SelectItem>
                 {loading ? (
                   <SelectItem key="00">Loading...</SelectItem>
                 ) : (
-                  categories?.map((c) => (
+                  (categories ?? []).map((c) => (
                     <SelectItem key={c.name}>
                       {c.name
                         .split(" ")
@@ -144,226 +158,11 @@ export default function CreateInventoryPage() {
           }
         >
           <div className="pt-4 max-w-4xl flex flex-col gap-6">
-            <CustomIdBuilder />
-            {/*             
-            <div>
-              <p className="text-sm text-default-500 mb-1">
-                {t("inventory.create.customId.subHeading_1")}
-              </p>
-              <p className="text-sm text-default-500 mb-6">
-                {t("inventory.create.customId.subHeading_2")}
-              </p>
-
-              <div className="flex items-center gap-2 mb-8 text-xl">
-                <span className="text-default-500">{t("inventory.create.customId.example")}</span>
-                <span className="font-mono tracking-wider font-semibold">📚-A7E3A_013_2025</span>
-              </div>
-
-              <div className="flex flex-col gap-6"> */}
-            {/* Element 1 */}
-            {/* <div>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      isIconOnly
-                      aria-label="Drag to move up or down"
-                      title={t("inventory.create.customId.dragToMove")}
-                      variant="light"
-                      className="text-default-400 min-w-10"
-                    >
-                      <GripVertical size={20} />
-                    </Button>
-                    <Select
-                      className="w-48"
-                      variant="bordered"
-                      defaultSelectedKeys={["fixed"]}
-                      aria-label="Type"
-                    >
-                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
-                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
-                      <SelectItem key="sequence">
-                        {t("inventory.create.customId.sequence")}
-                      </SelectItem>
-                      <SelectItem key="datetime">
-                        {t("inventory.create.customId.datetime")}
-                      </SelectItem>
-                    </Select>
-                    <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
-                      <Input
-                        variant="underlined"
-                        defaultValue="📚-"
-                        className="flex-1 h-10"
-                        aria-label="Value"
-                        classNames={{
-                          input: "border-none shadow-none",
-                          inputWrapper: "border-none shadow-none",
-                        }}
-                      />
-                      <div className="flex items-center gap-2 text-default-400 px-2 border-l border-default-200">
-                        <Button isIconOnly variant="light" size="sm" aria-label="Emoji">
-                          😀
-                        </Button>
-                        <Button isIconOnly variant="light" size="sm" aria-label="Help">
-                          ?
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
-                    {t("inventory.create.customId.fixed.hint")}
-                  </p>
-                </div> */}
-
-            {/* Element 2 */}
-            {/* <div>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      isIconOnly
-                      aria-label="Drag to move up or down"
-                      title={t("inventory.create.customId.dragToMove")}
-                      variant="light"
-                      className="text-default-400 min-w-10"
-                    >
-                      <GripVertical size={20} />
-                    </Button>
-                    <Select
-                      className="w-48"
-                      variant="bordered"
-                      defaultSelectedKeys={["random"]}
-                      aria-label="Type"
-                    >
-                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
-                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
-                      <SelectItem key="sequence">
-                        {t("inventory.create.customId.sequence")}
-                      </SelectItem>
-                      <SelectItem key="datetime">
-                        {t("inventory.create.customId.datetime")}
-                      </SelectItem>
-                    </Select>
-                    <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
-                      <Input
-                        variant="underlined"
-                        defaultValue="X5_"
-                        className="flex-1 h-10"
-                        aria-label="Value"
-                        classNames={{
-                          input: "border-none shadow-none",
-                          inputWrapper: "border-none shadow-none",
-                        }}
-                      />
-                      <div className="flex items-center gap-2 text-default-400 px-2 border-l border-default-200">
-                        <Button isIconOnly variant="light" size="sm" aria-label="Help">
-                          ?
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
-                    {t("inventory.create.customId.fixed.hint")}
-                  </p>
-                </div> */}
-
-            {/* Element 3 */}
-            {/* <div>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      isIconOnly
-                      aria-label="Drag to move up or down"
-                      title={t("inventory.create.customId.dragToMove")}
-                      variant="light"
-                      className="text-default-400 min-w-10"
-                    >
-                      <GripVertical size={20} />
-                    </Button>
-                    <Select
-                      className="w-48"
-                      variant="bordered"
-                      defaultSelectedKeys={["sequence"]}
-                      aria-label="Type"
-                    >
-                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
-                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
-                      <SelectItem key="sequence">
-                        {t("inventory.create.customId.sequence")}
-                      </SelectItem>
-                      <SelectItem key="datetime">
-                        {t("inventory.create.customId.datetime")}
-                      </SelectItem>
-                    </Select>
-                    <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
-                      <Input
-                        variant="underlined"
-                        defaultValue="D3_"
-                        className="flex-1 h-10"
-                        aria-label="Value"
-                        classNames={{
-                          input: "border-none shadow-none",
-                          inputWrapper: "border-none shadow-none",
-                        }}
-                      />
-                      <div className="flex items-center gap-2 text-default-400 px-2 border-l border-default-200">
-                        <Button isIconOnly variant="light" size="sm" aria-label="Help">
-                          ?
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
-                    {t("inventory.create.customId.sequence.hint")}
-                  </p>
-                </div> */}
-
-            {/* Element 4 */}
-            {/* <div>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      isIconOnly
-                      aria-label="Drag to move up or down"
-                      title={t("inventory.create.customId.dragToMove")}
-                      variant="light"
-                      className="text-default-400 min-w-10"
-                    >
-                      <GripVertical size={20} />
-                    </Button>
-                    <Select
-                      className="w-48"
-                      variant="bordered"
-                      defaultSelectedKeys={["datetime"]}
-                      aria-label="Type"
-                    >
-                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
-                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
-                      <SelectItem key="sequence">
-                        {t("inventory.create.customId.sequence")}
-                      </SelectItem>
-                      <SelectItem key="datetime">
-                        {t("inventory.create.customId.datetime")}
-                      </SelectItem>
-                    </Select>
-                    <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
-                      <Input
-                        variant="underlined"
-                        defaultValue="yyyy"
-                        className="flex-1 h-10"
-                        aria-label="Value"
-                        classNames={{
-                          input: "border-none shadow-none",
-                          inputWrapper: "border-none shadow-none",
-                        }}
-                      />
-                      <div className="flex items-center gap-2 text-default-400 px-2 border-l border-default-200">
-                        <Button isIconOnly variant="light" size="sm" aria-label="Help">
-                          ?
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
-                    {t("inventory.create.customId.datetime.hint")}
-                  </p>
-                </div> 
-              </div>
-            </div> */}
+            <CustomIdBuilder
+              items={customIdItems}
+              onItemsChange={setCustomIdItems}
+              onChange={setCustomIdValues}
+            />
           </div>
         </Tab>
 
