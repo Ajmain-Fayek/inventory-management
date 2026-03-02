@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
   DragEndEvent,
+  DragMoveEvent,
   DragStartEvent,
   DragOverlay,
-  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -17,20 +20,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@heroui/button";
-import { Select } from "@heroui/select";
-import { SelectItem } from "@heroui/select";
+import { Select, SelectItem } from "@heroui/select";
 import { Input } from "@heroui/input";
-import { GripVertical, Trash2, Plus } from "lucide-react";
+import { GripVertical, Plus, AlertTriangle } from "lucide-react";
 
 /* ================= TYPES ================= */
 
 type SegmentType = "fixed" | "random" | "sequence" | "datetime";
-
 type RandomMode = "20bit" | "32bit" | "6digit" | "9digit";
-
 type DateFormat = "yyyy" | "yy" | "yyyyMM" | "yyyyMMdd" | "yyyyMMddHHmm";
-
-type Separator = "_" | "-" | "";
+type Separator = "_" | "-";
 
 interface Segment {
   id: string;
@@ -42,9 +41,34 @@ interface Segment {
   separator?: Separator;
 }
 
+export interface CustomIdValues {
+  currentSequence?: number | null;
+
+  fixedValueState: boolean;
+  fixedValue?: string | null;
+  fixedPosition?: number | null;
+
+  sequenceValueState: boolean;
+  sequenceValue?: number | null;
+  sequenceValuePosition?: number | null;
+
+  randomValueState: boolean;
+  randomValue?: string | null;
+  randomValuePosition?: number | null;
+
+  datetimeValueState: boolean;
+  datetimeValue?: string | null;
+  datetimeValuePosition?: number | null;
+}
+
+interface CustomIdBuilderProps {
+  onChange?: (values: CustomIdValues) => void;
+  defaultItems?: Segment[];
+}
+
 /* ========= GENERATORS ========= */
 
-function generateRandom(mode: RandomMode = "20bit") {
+function generateRandom(mode: RandomMode = "20bit"): string {
   switch (mode) {
     case "20bit":
       return Math.floor(Math.random() * (1 << 20))
@@ -53,13 +77,13 @@ function generateRandom(mode: RandomMode = "20bit") {
     case "32bit":
       return crypto.getRandomValues(new Uint32Array(1))[0].toString(16).toUpperCase();
     case "6digit":
-      return Math.floor(100000 + Math.random() * 900000);
+      return String(Math.floor(100000 + Math.random() * 900000));
     case "9digit":
-      return Math.floor(100000000 + Math.random() * 900000000);
+      return String(Math.floor(100000000 + Math.random() * 900000000));
   }
 }
 
-function formatDate(format: DateFormat = "yyyy") {
+function formatDate(format: DateFormat = "yyyy"): string {
   const now = new Date();
   const yyyy = now.getFullYear();
   const yy = String(yyyy).slice(-2);
@@ -70,7 +94,7 @@ function formatDate(format: DateFormat = "yyyy") {
 
   switch (format) {
     case "yyyy":
-      return yyyy;
+      return String(yyyy);
     case "yy":
       return yy;
     case "yyyyMM":
@@ -82,83 +106,147 @@ function formatDate(format: DateFormat = "yyyy") {
   }
 }
 
-function generateSequence(format: string = "D") {
-  const base = 1; // example current number
-
-  if (format === "D_") {
-    return `${base}`;
-  }
-
+function generateSequence(format: string = "D"): string {
+  const base = 1;
+  if (format === "D_") return `${base}`;
   const match = format.match(/^D([1-9])/);
-
   if (match) {
     const digits = parseInt(match[1]);
-    return `${String(base).padStart(digits, "0")}`;
+    return String(base).padStart(digits, "0");
   }
-
   return `${base}`;
 }
 
-/* ================= COMPONENT ================= */
+/* ================= MAIN COMPONENT ================= */
 
-export default function CustomIdBuilder() {
-  const [items, setItems] = useState<Segment[]>([
-    { id: "1", type: "fixed", value: "📚-" },
-    { id: "2", type: "random", randomMode: "32bit" },
-    { id: "3", type: "sequence" },
-    { id: "4", type: "datetime", dateFormat: "yyyy" },
-  ]);
+const MAX_ITEMS = 4;
 
+export default function CustomIdBuilder({ onChange, defaultItems }: CustomIdBuilderProps) {
+  const [items, setItems] = useState<Segment[]>(
+    defaultItems ?? [{ id: "1", type: "fixed", value: "📚", separator: "_" }],
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isOverDelete, setIsOverDelete] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  // Track whether the dragged item is currently outside the builder zone
+  const pointerOutside = useRef(false);
+
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+  );
+
+  /* ========= DERIVED DATA ========= */
+
+  const existingTypes = useMemo(() => new Set(items.map((i) => i.type)), [items]);
+
+  const isUniqueType = (type: SegmentType, excludeId?: string): boolean => {
+    if (type === "fixed") return true;
+    return !items.some((item) => item.type === type && item.id !== excludeId);
+  };
 
   /* ========= DND HANDLERS ========= */
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
+    setIsDragging(true);
+    pointerOutside.current = false;
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    if (!formRef.current) return;
+    const rect = formRef.current.getBoundingClientRect();
+    // activatorEvent holds the original native pointer event
+    const nativeEvent = event.activatorEvent as PointerEvent;
+    // The current pointer position = original position + cumulative delta
+    const x = nativeEvent.clientX + event.delta.x;
+    const y = nativeEvent.clientY + event.delta.y;
+    const outside = x < rect.left || x > rect.right || y < rect.top || y > rect.bottom;
+    pointerOutside.current = outside;
+    setIsOverDelete(outside);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    const wasOutside = pointerOutside.current;
 
-    // Dropped outside builder zone → remove
-    if (!over || over.id !== "builder-zone") {
-      setItems((prev) => prev.filter((i) => i.id !== active.id));
-      setActiveId(null);
+    setIsDragging(false);
+    setIsOverDelete(false);
+    setActiveId(null);
+    pointerOutside.current = false;
+
+    // If pointer ended outside the builder container → remove
+    if (wasOutside) {
+      setItems((prev) => prev.filter((i) => i.id !== String(active.id)));
       return;
     }
 
-    if (active.id !== over.id) {
+    // Reordering within list
+    if (over && active.id !== over.id) {
       setItems((prev) => {
-        const oldIndex = prev.findIndex((i) => i.id === active.id);
-        const newIndex = prev.findIndex((i) => i.id === over.id);
+        const oldIndex = prev.findIndex((i) => i.id === String(active.id));
+        const newIndex = prev.findIndex((i) => i.id === String(over.id));
+        if (oldIndex === -1 || newIndex === -1) return prev;
         return arrayMove(prev, oldIndex, newIndex);
       });
     }
-
-    setActiveId(null);
   }
 
+  /* ========= TRACK POINTER OVER DELETE ZONE (visuals only) ========= */
+
+  useEffect(() => {
+    if (!isDragging) {
+      setIsOverDelete(false);
+    }
+  }, [isDragging]);
+
   /* ========= HELPERS ========= */
-
-  const isUniqueType = (type: SegmentType, id?: string) => {
-    if (type === "fixed") return true;
-
-    return !items.some((item) => item.type === type && item.id !== id);
-  };
 
   const updateSegment = (id: string, updates: Partial<Segment>) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
   };
 
+  const removeSegment = (id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
   const addSegment = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        type: "fixed",
-        value: "",
-      },
-    ]);
+    if (items.length >= MAX_ITEMS) return;
+
+    // Try to add a type that doesn't already exist (prefer fixed since it allows duplicates)
+    const nextType: SegmentType = "fixed";
+    const newSeg: Segment = {
+      id: crypto.randomUUID(),
+      type: nextType,
+      value: "",
+      separator: "_",
+    };
+    setItems((prev) => [...prev, newSeg]);
+    setDuplicateWarning(null);
+  };
+
+  const handleTypeChange = (id: string, newType: SegmentType) => {
+    if (newType !== "fixed" && !isUniqueType(newType, id)) {
+      setDuplicateWarning(
+        `"${newType.charAt(0).toUpperCase() + newType.slice(1)}" type is already added. Each type (except Fixed) can only be used once.`,
+      );
+      return;
+    }
+    setDuplicateWarning(null);
+    // Write explicit defaults so HeroUI Select always has a concrete selectedKey
+    const defaults: Partial<Segment> =
+      newType === "random"
+        ? { type: newType, randomMode: "20bit" }
+        : newType === "datetime"
+          ? { type: newType, dateFormat: "yyyy" }
+          : newType === "sequence"
+            ? { type: newType, sequenceFormat: "D" }
+            : { type: newType, value: "" };
+    updateSegment(id, defaults);
   };
 
   /* ========= PREVIEW ========= */
@@ -167,87 +255,158 @@ export default function CustomIdBuilder() {
     return items
       .map((item, index) => {
         let value = "";
-
         switch (item.type) {
           case "fixed":
             value = item.value ?? "";
             break;
-
           case "random":
             value = generateRandom(item.randomMode);
             break;
-
           case "sequence":
             value = generateSequence(item.sequenceFormat);
             break;
-
           case "datetime":
             value = formatDate(item.dateFormat);
             break;
         }
-
-        const separator = index !== items.length - 1 ? (item.separator ?? "") : "";
-
+        const separator = index !== items.length - 1 ? (item.separator ?? "_") : "";
         return value + separator;
       })
       .join("");
   }, [items]);
 
-  /* ========= TRASH ZONE ========= */
+  /* ========= DERIVED VALUES FOR onChange ========= */
 
-  const TrashZone = () => {
-    const { isOver, setNodeRef } = useDroppable({
-      id: "builder-zone",
-    });
+  useEffect(() => {
+    if (!onChange) return;
 
-    return (
-      <div
-        ref={setNodeRef}
-        className={`mt-6 border-2 border-dashed rounded-xl p-6 flex justify-center items-center transition 
-        ${isOver ? "border-danger bg-danger/10" : "border-default-200"}`}
-      >
-        {activeId && !isOver && (
-          <div className="text-danger text-sm mt-2">Release to remove this segment</div>
-        )}
+    const fixedItem = items.find((i) => i.type === "fixed");
+    const sequenceItem = items.find((i) => i.type === "sequence");
+    const randomItem = items.find((i) => i.type === "random");
+    const datetimeItem = items.find((i) => i.type === "datetime");
 
-        <Trash2 className="text-danger" />
-      </div>
-    );
-  };
+    const values: CustomIdValues = {
+      currentSequence: sequenceItem
+        ? parseInt(generateSequence(sequenceItem.sequenceFormat))
+        : null,
+
+      fixedValueState: !!fixedItem,
+      fixedValue: fixedItem?.value ?? null,
+      fixedPosition: fixedItem ? items.indexOf(fixedItem) : null,
+
+      sequenceValueState: !!sequenceItem,
+      sequenceValue: sequenceItem ? parseInt(generateSequence(sequenceItem.sequenceFormat)) : null,
+      sequenceValuePosition: sequenceItem ? items.indexOf(sequenceItem) : null,
+
+      randomValueState: !!randomItem,
+      randomValue: randomItem?.randomMode ?? null,
+      randomValuePosition: randomItem ? items.indexOf(randomItem) : null,
+
+      datetimeValueState: !!datetimeItem,
+      datetimeValue: datetimeItem?.dateFormat ?? null,
+      datetimeValuePosition: datetimeItem ? items.indexOf(datetimeItem) : null,
+    };
+
+    onChange(values);
+  }, [items, onChange]);
 
   /* ========= RENDER ========= */
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Preview */}
-      <div className="text-xl font-mono tracking-wider bg-content2 p-4 rounded-xl">{preview}</div>
+  const atMax = items.length >= MAX_ITEMS;
 
-      <Button startContent={<Plus size={16} />} onPress={addSegment} color="primary" variant="flat">
-        Add Element
-      </Button>
+  return (
+    <div className="max-w-4xl mx-auto space-y-4" ref={formRef}>
+      {/* Preview */}
+      <div className="text-xl font-mono tracking-wider bg-content2 p-4 rounded-xl break-all">
+        {preview || <span className="text-default-400 text-sm">No elements added yet</span>}
+      </div>
+
+      {/* Add Element Button */}
+      <div className="flex items-center gap-3">
+        <Button
+          startContent={<Plus size={16} />}
+          onPress={addSegment}
+          color="primary"
+          variant="flat"
+          isDisabled={atMax}
+        >
+          Add Element
+        </Button>
+        {atMax && (
+          <span className="text-sm text-default-400">Maximum {MAX_ITEMS} elements reached</span>
+        )}
+      </div>
+
+      {/* Duplicate Warning */}
+      {duplicateWarning && (
+        <div className="flex items-center gap-2 bg-warning-50 border border-warning-200 text-warning-700 rounded-lg px-4 py-2 text-sm">
+          <AlertTriangle size={16} className="shrink-0" />
+          <span>{duplicateWarning}</span>
+        </div>
+      )}
 
       <DndContext
+        sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-4 bg-amber-400 p-4">
-            {items.map((item) => (
+        {/* Builder Zone (Active / Blue highlight when dragging) */}
+        <div
+          className={`rounded-xl border-2 p-4 space-y-3 transition-colors duration-200 ${
+            isDragging
+              ? "border-primary bg-primary/5 border-solid"
+              : "border-dashed border-default-200"
+          }`}
+        >
+          {isDragging && (
+            <p className="text-xs text-primary text-center font-medium">
+              Drop here to reorder · Drag outside to remove
+            </p>
+          )}
+
+          <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            {items.map((item, index) => (
               <SortableItem
                 key={item.id}
                 item={item}
+                index={index}
                 updateSegment={updateSegment}
+                onTypeChange={handleTypeChange}
+                onRemove={removeSegment}
                 isUniqueType={isUniqueType}
               />
             ))}
-          </div>
-        </SortableContext>
+          </SortableContext>
 
-        <TrashZone />
+          {items.length === 0 && (
+            <div className="py-8 text-center text-default-400 text-sm">
+              No elements. Click &quot;Add Element&quot; to begin.
+            </div>
+          )}
+        </div>
+
+        {/* Delete Zone (Red — always visible, highlights when dragging outside) */}
+        {isDragging && (
+          <div
+            className={`mt-3 rounded-xl border-2 border-dashed p-2 flex items-center justify-center gap-2 text-sm font-medium transition-colors duration-200 ${
+              isOverDelete
+                ? "border-danger bg-danger/15 text-danger"
+                : "border-danger/40 bg-danger/5 text-danger/60"
+            }`}
+          >
+            <span>🗑</span>
+            <span>Drag outside the blue area to remove</span>
+          </div>
+        )}
 
         <DragOverlay>
-          {activeId ? <div className="p-4 bg-content2 rounded-lg shadow-lg">Moving...</div> : null}
+          {activeId ? (
+            <div className="p-3 bg-content2 border border-primary rounded-lg shadow-xl opacity-90 text-sm font-medium text-primary">
+              Moving segment…
+            </div>
+          ) : null}
         </DragOverlay>
       </DndContext>
     </div>
@@ -256,63 +415,122 @@ export default function CustomIdBuilder() {
 
 /* ================= SORTABLE ITEM ================= */
 
-function SortableItem({ item, updateSegment, isUniqueType }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+interface SortableItemProps {
+  item: Segment;
+  index: number;
+  updateSegment: (id: string, updates: Partial<Segment>) => void;
+  onTypeChange: (id: string, type: SegmentType) => void;
+  onRemove: (id: string) => void;
+  isUniqueType: (type: SegmentType, excludeId?: string) => boolean;
+}
+
+function SortableItem({
+  item,
+  updateSegment,
+  onTypeChange,
+  onRemove,
+  isUniqueType,
+}: SortableItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="p-4 bg-content1 rounded-xl shadow-sm flex items-center gap-4"
+      className="p-3 bg-content1 rounded-xl shadow-sm flex items-center gap-3 border border-default-100"
     >
-      <Button {...attributes} {...listeners} isIconOnly variant="light" className="cursor-grab">
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="touch-none cursor-grab active:cursor-grabbing text-default-400 hover:text-default-700 transition-colors p-1 rounded"
+        aria-label="Drag to reorder"
+      >
         <GripVertical size={18} />
-      </Button>
+      </button>
 
+      {/* Type Selector */}
       <Select
         selectedKeys={[item.type]}
         onSelectionChange={(keys) => {
           const newType = Array.from(keys)[0] as SegmentType;
-          if (!isUniqueType(newType, item.id)) return;
-          updateSegment(item.id, { type: newType });
+          if (newType) onTypeChange(item.id, newType);
         }}
-        className="w-44"
+        className="w-40 shrink-0"
+        size="sm"
+        aria-label="Segment type"
       >
         <SelectItem key="fixed">Fixed</SelectItem>
-        <SelectItem key="random" isDisabled={!isUniqueType("random", item.id)}>
+        <SelectItem
+          key="random"
+          isReadOnly={!isUniqueType("random", item.id)}
+          className={`${!isUniqueType("random", item.id) ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
           Random
         </SelectItem>
-        <SelectItem key="sequence" isDisabled={!isUniqueType("sequence", item.id)}>
+        <SelectItem
+          key="sequence"
+          isReadOnly={!isUniqueType("sequence", item.id)}
+          className={`${!isUniqueType("sequence", item.id) ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
           Sequence
         </SelectItem>
-        <SelectItem key="datetime" isDisabled={!isUniqueType("datetime", item.id)}>
+        <SelectItem
+          key="datetime"
+          isReadOnly={!isUniqueType("datetime", item.id)}
+          className={`${!isUniqueType("datetime", item.id) ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
           DateTime
         </SelectItem>
       </Select>
 
+      {/* Type-specific controls */}
       {item.type === "fixed" && (
         <Input
           value={item.value ?? ""}
           onValueChange={(val) => updateSegment(item.id, { value: val })}
           className="flex-1"
+          size="sm"
+          placeholder="Fixed text…"
+          aria-label="Fixed value"
         />
       )}
 
       {item.type === "sequence" && (
         <Input
           value={item.sequenceFormat ?? "D"}
-          onValueChange={(val) =>
-            updateSegment(item.id, {
-              sequenceFormat: val,
-            })
-          }
-          placeholder="D or D4"
+          onValueChange={(val) => {
+            // Always keep the "D" prefix; allow at most one digit 1-9 after it
+            if (val === "D" || val === "") {
+              updateSegment(item.id, { sequenceFormat: "D" });
+              return;
+            }
+            if (/^D[1-9]$/.test(val)) {
+              updateSegment(item.id, { sequenceFormat: val });
+              return;
+            }
+            // Block anything else (don't update)
+          }}
+          onKeyDown={(e) => {
+            const current = item.sequenceFormat ?? "D";
+            // Prevent deleting the "D"
+            if ((e.key === "Backspace" || e.key === "Delete") && current === "D") {
+              e.preventDefault();
+            }
+          }}
+          placeholder="D or D1–D9"
+          description="D = no padding, D4 = 4-digit padding"
           className="flex-1"
+          size="sm"
+          aria-label="Sequence format"
         />
       )}
 
@@ -321,13 +539,15 @@ function SortableItem({ item, updateSegment, isUniqueType }: any) {
           selectedKeys={[item.randomMode ?? "20bit"]}
           onSelectionChange={(keys) =>
             updateSegment(item.id, {
-              randomMode: Array.from(keys)[0],
+              randomMode: Array.from(keys)[0] as RandomMode,
             })
           }
           className="flex-1"
+          size="sm"
+          aria-label="Random mode"
         >
-          <SelectItem key="20bit">20-bit</SelectItem>
-          <SelectItem key="32bit">32-bit</SelectItem>
+          <SelectItem key="20bit">20-bit Hex</SelectItem>
+          <SelectItem key="32bit">32-bit Hex</SelectItem>
           <SelectItem key="6digit">6 Digit</SelectItem>
           <SelectItem key="9digit">9 Digit</SelectItem>
         </Select>
@@ -338,19 +558,32 @@ function SortableItem({ item, updateSegment, isUniqueType }: any) {
           selectedKeys={[item.dateFormat ?? "yyyy"]}
           onSelectionChange={(keys) =>
             updateSegment(item.id, {
-              dateFormat: Array.from(keys)[0],
+              dateFormat: Array.from(keys)[0] as DateFormat,
             })
           }
           className="flex-1"
+          size="sm"
+          aria-label="Date format"
         >
-          <SelectItem key="yyyy">Year - {formatDate("yyyy")}</SelectItem>
-          <SelectItem key="yy">Short Year - {formatDate("yy")}</SelectItem>
-          <SelectItem key="yyyyMM">Year + Month - {formatDate("yyyyMM")}</SelectItem>
-          <SelectItem key="yyyyMMdd">Date - {formatDate("yyyyMMdd")}</SelectItem>
-          <SelectItem key="yyyyMMddHHmm">Timestamp - {formatDate("yyyyMMddHHmm")}</SelectItem>
+          <SelectItem key="yyyy" textValue={`Year — ${formatDate("yyyy")}`}>
+            Year — {formatDate("yyyy")}
+          </SelectItem>
+          <SelectItem key="yy" textValue={`Short Year — ${formatDate("yy")}`}>
+            Short Year — {formatDate("yy")}
+          </SelectItem>
+          <SelectItem key="yyyyMM" textValue={`Year + Month — ${formatDate("yyyyMM")}`}>
+            Year + Month — {formatDate("yyyyMM")}
+          </SelectItem>
+          <SelectItem key="yyyyMMdd" textValue={`Date — ${formatDate("yyyyMMdd")}`}>
+            Date — {formatDate("yyyyMMdd")}
+          </SelectItem>
+          <SelectItem key="yyyyMMddHHmm" textValue={`Timestamp — ${formatDate("yyyyMMddHHmm")}`}>
+            Timestamp — {formatDate("yyyyMMddHHmm")}
+          </SelectItem>
         </Select>
       )}
 
+      {/* Separator */}
       <Select
         selectedKeys={[item.separator ?? "_"]}
         onSelectionChange={(keys) =>
@@ -358,12 +591,24 @@ function SortableItem({ item, updateSegment, isUniqueType }: any) {
             separator: Array.from(keys)[0] as Separator,
           })
         }
-        className="w-24"
+        className="w-24 shrink-0"
+        size="sm"
+        aria-label="Separator"
+        label="Sep"
+        labelPlacement="outside-left"
       >
         <SelectItem key="_">_</SelectItem>
         <SelectItem key="-">-</SelectItem>
-        <SelectItem key="">None</SelectItem>
       </Select>
+
+      {/* Remove Button */}
+      <button
+        onClick={() => onRemove(item.id)}
+        className="text-danger/60 hover:text-danger transition-colors p-1 rounded shrink-0"
+        aria-label="Remove segment"
+      >
+        ✕
+      </button>
     </div>
   );
 }
