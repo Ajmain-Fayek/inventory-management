@@ -87,11 +87,15 @@ export default function RegisterPage() {
             <h1 className="text-3xl font-bold bg-linear-to-r from-secondary to-primary bg-clip-text text-transparent">
               {t("auth.register")}
             </h1>
-            <p className="text-default-500 text-sm">Create an account to get started</p>
+            <p className="text-default-500 text-sm">{t("auth.register.subtitle")}</p>
           </CardHeader>
           <CardBody className="px-8 pb-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {error && <p className="text-danger text-sm text-center bg-danger/10 p-2 rounded-md">{error}</p>}
+              {error && (
+                <p className="text-danger text-sm text-center bg-danger/10 p-2 rounded-md">
+                  {error}
+                </p>
+              )}
               <Input
                 label="Full Name"
                 variant="bordered"
@@ -154,12 +158,14 @@ export default function RegisterPage() {
                 isDisabled={isSocialLoading !== null}
                 onClick={handleFacebookLogin}
               >
-                {isSocialLoading !== "facebook" && <FaFacebook size={18} className="text-blue-600" />}
+                {isSocialLoading !== "facebook" && (
+                  <FaFacebook size={18} className="text-blue-600" />
+                )}
               </Button>
             </div>
 
             <p className="text-center text-sm text-default-500 mt-6">
-              Already have an account?{" "}
+              {t("auth.already_have_account")}{" "}
               <Link href="/auth/login" size="sm" color="secondary" className="font-semibold">
                 {t("auth.login")}
               </Link>

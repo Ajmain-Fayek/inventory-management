@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
 import { Input } from "@heroui/input";
@@ -22,35 +22,70 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { GlobalToolbar } from "@/components/global-toolbar";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { inventoryService } from "@/services/inventory.service";
+import { getInventoryColumns } from "./_helper";
+import { useInventory } from "@/context/InventoryContext";
 
 export default function InventoryPage({ params }: { params: { id: string } }) {
   const { t } = useLanguage();
   const router = useRouter();
+  const {
+    inventory,
+    setInventory,
+    inventoryColumns,
+    setInventoryColumns,
+    itemPage,
+    setItemPage,
+    itemRecordLimit,
+    setItemRecordLimit,
+    totalItems,
+    setTotalItems,
+    items,
+    setItems,
+  } = useInventory();
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const { id } = useParams();
 
-  // Mock Items Data
-  const items = [
-    { id: "ITEM-001", name: "Dell XPS 13", condition: "Good" },
-    { id: "ITEM-002", name: "MacBook Pro 16", condition: "Excellent" },
-  ];
+  useEffect(() => {
+    const getInventories = async () => {
+      const [inventory, _items] = await Promise.all([
+        inventoryService.getInventoryById(id as string),
+        inventoryService.getInvItems(id as string, itemPage, itemRecordLimit),
+      ]);
 
-  // Drag and Drop State for Custom ID Builder
-  const [idElements, setIdElements] = useState([
-    { id: "1", type: "Fixed text", value: "ITM-" },
-    { id: "2", type: "Date/time", value: "YYYYMM" },
-    { id: "3", type: "Sequence", value: "000" },
-  ]);
+      const { data, meta } = await _items;
+      const customCols = await getInventoryColumns(inventory.data);
+      setInventoryColumns(customCols);
+      setInventory(inventory.data);
+      setItems(data);
+      setTotalItems(meta.total);
+      console.log(_items);
+      setLoading(false);
 
-  const previewID = idElements
-    .map((el) => (el.type === "Fixed text" ? el.value : el.type === "Sequence" ? "042" : "202611"))
-    .join("");
+      return;
+    };
+    getInventories();
+  }, [itemRecordLimit, itemPage]);
 
   return (
     <div className="flex flex-col gap-6 px-4 py-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold">Inventory: Office Hardware</h1>
-        <p className="text-default-500">Manage items, settings, and access for this inventory.</p>
+        {loading ? (
+          <div>Loading Inventory...</div>
+        ) : (
+          <>
+            <h1 className="text-3xl font-bold">
+              Inventory:{" "}
+              {inventory?.title
+                .split(" ")
+                .map((a) => a[0].toUpperCase() + a.slice(1, a.length))
+                .join(" ")}
+            </h1>
+            <p className="text-default-500">{inventory?.description}</p>
+          </>
+        )}
       </motion.div>
 
       <Tabs
@@ -81,27 +116,59 @@ export default function InventoryPage({ params }: { params: { id: string } }) {
               isEditDisabled={selectedItemKeys.size !== 1}
               isDeleteDisabled={selectedItemKeys.size === 0}
             />
-            <Table
-              selectionMode="multiple"
-              onSelectionChange={(keys) =>
-                setSelectedItemKeys(new Set(Array.from(keys) as string[]))
-              }
-            >
-              <TableHeader>
-                <TableColumn>CUSTOM ID</TableColumn>
-                <TableColumn>NAME</TableColumn>
-                <TableColumn>CONDITION</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id} className="cursor-pointer">
-                    <TableCell className="font-mono">{item.id}</TableCell>
-                    <TableCell className="font-semibold">{item.name}</TableCell>
-                    <TableCell>{item.condition}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {/* Filters and Rows Per Page Header */}
+            <div className="flex justify-between items-center mb-4 gap-4">
+              <div className="text-sm text-default-500">Total Records: {totalItems}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-default-500">
+                  {t("inventories.table.rowsPerPage")}
+                </span>
+                <Select
+                  size="sm"
+                  className="w-24"
+                  variant="bordered"
+                  selectedKeys={[String(itemRecordLimit)]}
+                  onChange={(e) => {
+                    setItemRecordLimit(Number(e.target.value));
+                    setItemPage(1);
+                  }}
+                  aria-label="Record per page"
+                >
+                  <SelectItem key="25">25</SelectItem>
+                  <SelectItem key="50">50</SelectItem>
+                  <SelectItem key="100">100</SelectItem>
+                </Select>
+              </div>
+            </div>
+            {loading ? (
+              <div>Loading Items...</div>
+            ) : (
+              <Table
+                selectionMode="multiple"
+                onSelectionChange={(keys) =>
+                  setSelectedItemKeys(new Set(Array.from(keys) as string[]))
+                }
+              >
+                <TableHeader>
+                  <TableColumn>CUSTOM ID</TableColumn>
+
+                  {inventoryColumns.map((col: string) => (
+                    <TableColumn key={col}>{inventory[`${col}`]}</TableColumn>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id} className="cursor-pointer">
+                      <TableCell className="font-mono">{item.id}</TableCell>
+
+                      {inventoryColumns.map((col) => (
+                        <TableCell key={col + "kjsd"}>{"abc"}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </Tab>
 

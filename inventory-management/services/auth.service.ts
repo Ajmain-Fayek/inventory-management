@@ -15,6 +15,11 @@ export const authService = {
     return response.data;
   },
 
+  getCurrentUser: async () => {
+    const response = await axiosInstance.get("/api/v1/auth/me");
+    return response.data;
+  },
+
   // ── Logout ────────────────────────────────────────────────────────────────
 
   /**

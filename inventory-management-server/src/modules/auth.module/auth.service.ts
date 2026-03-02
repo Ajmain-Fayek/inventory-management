@@ -1,4 +1,3 @@
-import jwt from "jsonwebtoken";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../errorHelper/AppError.js";
 import { auth } from "@/lib/auth.js";
@@ -33,7 +32,7 @@ const loginUser = async (payload: ILoginPayload) => {
     throw new AppError("Your account has been blocked by an admin", 403);
   }
 
-  const accessToken = tokenUtils.getAccessToken({
+  const accessToken = await tokenUtils.getAccessToken({
     userId: user.id,
     role: user.role,
     name: user.name,
@@ -42,7 +41,7 @@ const loginUser = async (payload: ILoginPayload) => {
     emailVerified: user.emailVerified,
   });
 
-  const refreshToken = tokenUtils.getRefreshToken({
+  const refreshToken = await tokenUtils.getRefreshToken({
     userId: user.id,
     role: user.role,
     name: user.name,
@@ -50,6 +49,14 @@ const loginUser = async (payload: ILoginPayload) => {
     status: user.status,
     emailVerified: user.emailVerified,
   });
+
+  // await prisma.account.update({
+  //   where: { id: user.id },
+  //   data: {
+  //     accessToken,
+  //     refreshToken,
+  //   },
+  // });
 
   return {
     ...data,

@@ -17,13 +17,41 @@ import {
   Plus,
   GripVertical,
   BarChart3,
-  MessageSquare,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import { categoryService } from "@/services/category.service";
+import TagInput from "../_components/TagInput";
+import CustomIdBuilder from "../_components/CustomIdBuilder";
 
 export default function CreateInventoryPage() {
+  const { t } = useLanguage();
   const router = useRouter();
+  const [categories, setCategories] = useState<{ id: string; name: string }[] | undefined>(
+    undefined,
+  );
+  const [loading, setLoading] = useState(true);
+  const [tags, setTags] = useState<
+    {
+      id: string;
+      name: string;
+    }[]
+  >([]);
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [category, setCategory] = useState<string>("");
+
+  const getCategories = async () => {
+    const categories = await categoryService.getCategories();
+
+    setCategories(categories.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    getCategories();
+  }, []);
 
   return (
     <div className="flex flex-col gap-8 py-8 px-4 max-w-4xl mx-auto">
@@ -37,57 +65,70 @@ export default function CreateInventoryPage() {
             <ArrowLeft size={20} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Create New Inventory</h1>
-            <p className="text-default-500">Set up properties and access</p>
+            <h1 className="text-2xl font-bold">{t("inventory.create.header")}</h1>
+            <p className="text-default-500">{t("inventory.create.header.subtitle")}</p>
           </div>
         </div>
 
         <Button color="primary" startContent={<Save size={18} />}>
-          Save Inventory
+          {t("inventory.create.button")}
         </Button>
       </motion.div>
 
       <Tabs aria-label="Inventory Options" color="primary" variant="underlined">
-        {/* SETTINGS TAB */}
+        {/* GENERAL SETTINGS TAB */}
         <Tab
           key="settings"
           title={
             <div className="flex items-center justify-center gap-2">
               <Settings size={18} />
-              <span>General Settings</span>
+              <span>{t("inventory.create.generalSettings")}</span>
             </div>
           }
         >
           <div className="pt-4 max-w-4xl flex flex-col gap-6">
             <div className="flex flex-col gap-6">
               <Input
-                label="Title"
-                defaultValue="Office Hardware"
+                label={t("inventory.create.generalSettings.title")}
+                placeholder={t("inventory.create.generalSettings.title.placeholder")}
                 variant="bordered"
                 className="w-full"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
               <Textarea
-                label="Description"
-                defaultValue="Laptops, monitors, and peripherals"
+                label={t("inventory.create.generalSettings.description")}
+                placeholder={t("inventory.create.generalSettings.description.placeholder")}
                 variant="bordered"
                 className="w-full"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
               <Select
-                label="Category"
-                defaultSelectedKeys={["1"]}
+                label={t("inventory.create.generalSettings.category")}
+                defaultSelectedKeys={["0"]}
                 variant="bordered"
                 className="w-full"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
               >
-                <SelectItem key="1">Equipment</SelectItem>
-                <SelectItem key="2">Furniture</SelectItem>
-                <SelectItem key="3">Books</SelectItem>
+                <SelectItem isReadOnly={true} key="0">
+                  {t("inventory.create.generalSettings.category.placeholder")}
+                </SelectItem>
+                {loading ? (
+                  <SelectItem key="00">Loading...</SelectItem>
+                ) : (
+                  categories?.map((c) => (
+                    <SelectItem key={c.name}>
+                      {c.name
+                        .split(" ")
+                        .map((a) => a[0].toUpperCase() + a.slice(1, a.length))
+                        .join(" ")}
+                    </SelectItem>
+                  ))
+                )}
               </Select>
-              <Input
-                label="Tags"
-                placeholder="Type and press enter or comma to add tags"
-                variant="bordered"
-                className="w-full"
-              />
+              <TagInput value={tags} onChange={setTags} />
             </div>
           </div>
         </Tab>
@@ -98,30 +139,37 @@ export default function CreateInventoryPage() {
           title={
             <div className="flex items-center gap-2">
               <CheckCircle size={18} />
-              <span>Custom ID</span>
+              <span>{t("inventory.create.customId")}</span>
             </div>
           }
         >
           <div className="pt-4 max-w-4xl flex flex-col gap-6">
+            <CustomIdBuilder />
+            {/*             
             <div>
               <p className="text-sm text-default-500 mb-1">
-                You can set up items with inventory numbers in your preferred format.
+                {t("inventory.create.customId.subHeading_1")}
               </p>
               <p className="text-sm text-default-500 mb-6">
-                To create a format, add new elements, edit them, drag to reorder, or drag elements
-                out of the form to delete them.
+                {t("inventory.create.customId.subHeading_2")}
               </p>
 
               <div className="flex items-center gap-2 mb-8 text-xl">
-                <span className="text-default-500">Example:</span>
+                <span className="text-default-500">{t("inventory.create.customId.example")}</span>
                 <span className="font-mono tracking-wider font-semibold">📚-A7E3A_013_2025</span>
               </div>
 
-              <div className="flex flex-col gap-6">
-                {/* Element 1 */}
-                <div>
+              <div className="flex flex-col gap-6"> */}
+            {/* Element 1 */}
+            {/* <div>
                   <div className="flex items-center gap-4">
-                    <Button isIconOnly variant="light" className="text-default-400 min-w-10">
+                    <Button
+                      isIconOnly
+                      aria-label="Drag to move up or down"
+                      title={t("inventory.create.customId.dragToMove")}
+                      variant="light"
+                      className="text-default-400 min-w-10"
+                    >
                       <GripVertical size={20} />
                     </Button>
                     <Select
@@ -130,10 +178,14 @@ export default function CreateInventoryPage() {
                       defaultSelectedKeys={["fixed"]}
                       aria-label="Type"
                     >
-                      <SelectItem key="fixed">Fixed</SelectItem>
-                      <SelectItem key="random">20-bit random</SelectItem>
-                      <SelectItem key="sequence">Sequence</SelectItem>
-                      <SelectItem key="datetime">Date/time</SelectItem>
+                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
+                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
+                      <SelectItem key="sequence">
+                        {t("inventory.create.customId.sequence")}
+                      </SelectItem>
+                      <SelectItem key="datetime">
+                        {t("inventory.create.customId.datetime")}
+                      </SelectItem>
                     </Select>
                     <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
                       <Input
@@ -156,15 +208,21 @@ export default function CreateInventoryPage() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-default-400 mt-2 ml-14 pl-2">
-                    A piece of unchanging text. E.g., you can use Unicode emoji.
+                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
+                    {t("inventory.create.customId.fixed.hint")}
                   </p>
-                </div>
+                </div> */}
 
-                {/* Element 2 */}
-                <div>
+            {/* Element 2 */}
+            {/* <div>
                   <div className="flex items-center gap-4">
-                    <Button isIconOnly variant="light" className="text-default-400 min-w-10">
+                    <Button
+                      isIconOnly
+                      aria-label="Drag to move up or down"
+                      title={t("inventory.create.customId.dragToMove")}
+                      variant="light"
+                      className="text-default-400 min-w-10"
+                    >
                       <GripVertical size={20} />
                     </Button>
                     <Select
@@ -173,10 +231,14 @@ export default function CreateInventoryPage() {
                       defaultSelectedKeys={["random"]}
                       aria-label="Type"
                     >
-                      <SelectItem key="fixed">Fixed</SelectItem>
-                      <SelectItem key="random">20-bit random</SelectItem>
-                      <SelectItem key="sequence">Sequence</SelectItem>
-                      <SelectItem key="datetime">Date/time</SelectItem>
+                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
+                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
+                      <SelectItem key="sequence">
+                        {t("inventory.create.customId.sequence")}
+                      </SelectItem>
+                      <SelectItem key="datetime">
+                        {t("inventory.create.customId.datetime")}
+                      </SelectItem>
                     </Select>
                     <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
                       <Input
@@ -196,16 +258,21 @@ export default function CreateInventoryPage() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-default-400 mt-2 ml-14 pl-2">
-                    A random value. E.g., you can format it as a six-digit decimal (D6) or 5-digit
-                    hex (X5).
+                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
+                    {t("inventory.create.customId.fixed.hint")}
                   </p>
-                </div>
+                </div> */}
 
-                {/* Element 3 */}
-                <div>
+            {/* Element 3 */}
+            {/* <div>
                   <div className="flex items-center gap-4">
-                    <Button isIconOnly variant="light" className="text-default-400 min-w-10">
+                    <Button
+                      isIconOnly
+                      aria-label="Drag to move up or down"
+                      title={t("inventory.create.customId.dragToMove")}
+                      variant="light"
+                      className="text-default-400 min-w-10"
+                    >
                       <GripVertical size={20} />
                     </Button>
                     <Select
@@ -214,10 +281,14 @@ export default function CreateInventoryPage() {
                       defaultSelectedKeys={["sequence"]}
                       aria-label="Type"
                     >
-                      <SelectItem key="fixed">Fixed</SelectItem>
-                      <SelectItem key="random">20-bit random</SelectItem>
-                      <SelectItem key="sequence">Sequence</SelectItem>
-                      <SelectItem key="datetime">Date/time</SelectItem>
+                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
+                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
+                      <SelectItem key="sequence">
+                        {t("inventory.create.customId.sequence")}
+                      </SelectItem>
+                      <SelectItem key="datetime">
+                        {t("inventory.create.customId.datetime")}
+                      </SelectItem>
                     </Select>
                     <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
                       <Input
@@ -237,16 +308,21 @@ export default function CreateInventoryPage() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-default-400 mt-2 ml-14 pl-2">
-                    A sequential index. E.g., you can format it with leading zeros (D4) or without
-                    them (D).
+                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
+                    {t("inventory.create.customId.sequence.hint")}
                   </p>
-                </div>
+                </div> */}
 
-                {/* Element 4 */}
-                <div>
+            {/* Element 4 */}
+            {/* <div>
                   <div className="flex items-center gap-4">
-                    <Button isIconOnly variant="light" className="text-default-400 min-w-10">
+                    <Button
+                      isIconOnly
+                      aria-label="Drag to move up or down"
+                      title={t("inventory.create.customId.dragToMove")}
+                      variant="light"
+                      className="text-default-400 min-w-10"
+                    >
                       <GripVertical size={20} />
                     </Button>
                     <Select
@@ -255,10 +331,14 @@ export default function CreateInventoryPage() {
                       defaultSelectedKeys={["datetime"]}
                       aria-label="Type"
                     >
-                      <SelectItem key="fixed">Fixed</SelectItem>
-                      <SelectItem key="random">20-bit random</SelectItem>
-                      <SelectItem key="sequence">Sequence</SelectItem>
-                      <SelectItem key="datetime">Date/time</SelectItem>
+                      <SelectItem key="fixed">{t("inventory.create.customId.fixed")}</SelectItem>
+                      <SelectItem key="random">{t("inventory.create.customId.random")}</SelectItem>
+                      <SelectItem key="sequence">
+                        {t("inventory.create.customId.sequence")}
+                      </SelectItem>
+                      <SelectItem key="datetime">
+                        {t("inventory.create.customId.datetime")}
+                      </SelectItem>
                     </Select>
                     <div className="flex-1 flex items-center border border-default-200 rounded-lg bg-content1 px-3 py-1">
                       <Input
@@ -278,24 +358,12 @@ export default function CreateInventoryPage() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-default-400 mt-2 ml-14 pl-2">
-                    An item creation date and time. E.g., you can use an abbreviated day of the week
-                    (ddd).
+                  <p className="text-xs text-default-500 mt-2 ml-14 pl-2">
+                    {t("inventory.create.customId.datetime.hint")}
                   </p>
-                </div>
+                </div> 
               </div>
-
-              <div className="mt-8 ml-14">
-                <Button
-                  color="secondary"
-                  variant="bordered"
-                  className="border-secondary text-secondary font-semibold px-8"
-                  startContent={<Plus size={18} />}
-                >
-                  Add element
-                </Button>
-              </div>
-            </div>
+            </div> */}
           </div>
         </Tab>
 
@@ -305,15 +373,15 @@ export default function CreateInventoryPage() {
           title={
             <div className="flex items-center gap-2">
               <Database size={18} />
-              <span>Custom Fields</span>
+              <span>{t("inventory.create.customFields")}</span>
             </div>
           }
         >
           <div className="pt-4 max-w-4xl">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">Fields Definition</h3>
+              <h3 className="text-lg font-bold">{t("inventory.create.customFields.heading")}</h3>
               <Button size="sm" color="primary" startContent={<Plus size={16} />}>
-                New Field
+                {t("inventory.create.customFields.button")}
               </Button>
             </div>
             <div className="flex flex-col gap-4 w-full">
@@ -325,7 +393,7 @@ export default function CreateInventoryPage() {
                   <p className="text-xs text-default-500">Single-line text</p>
                 </div>
                 <Switch defaultSelected size="sm">
-                  Show in Table
+                  {t("inventory.create.customFields.toggle")}
                 </Switch>
                 <Button isIconOnly color="danger" variant="light">
                   X
@@ -338,7 +406,7 @@ export default function CreateInventoryPage() {
                   <p className="text-xs text-default-500">Date</p>
                 </div>
                 <Switch defaultSelected size="sm">
-                  Show in Table
+                  {t("inventory.create.customFields.toggle")}
                 </Switch>
                 <Button isIconOnly color="danger" variant="light">
                   X
@@ -354,25 +422,29 @@ export default function CreateInventoryPage() {
           title={
             <div className="flex items-center gap-2">
               <Users size={18} />
-              <span>Access</span>
+              <span>{t("inventory.create.accessSettings")}</span>
             </div>
           }
         >
           <div className="pt-4 max-w-4xl flex flex-col gap-6">
             <div className="flex items-center justify-between p-4 bg-content2 rounded-lg border border-default-200">
               <div>
-                <h4 className="font-bold">Public Inventory</h4>
+                <h4 className="font-bold">
+                  {t("inventory.create.accessSettings.publicInventory")}
+                </h4>
                 <p className="text-sm text-default-500">
-                  Allow any authenticated user to add items.
+                  {t("inventory.create.accessSettings.publicInventory.hint")}
                 </p>
               </div>
               <Switch color="success" />
             </div>
 
             <div>
-              <h4 className="font-bold mb-2">Users with Write Access</h4>
+              <h4 className="font-bold mb-2">
+                {t("inventory.create.accessSettings.userWithWriteAccess")}
+              </h4>
               <Input
-                placeholder="Type userId or email to add..."
+                placeholder={t("inventory.create.accessSettings.userWithWriteAccess.placeholder")}
                 variant="bordered"
                 className="mb-4"
               />
@@ -380,7 +452,7 @@ export default function CreateInventoryPage() {
                 <div className="flex justify-between items-center p-3 bg-default-100 rounded-md">
                   <span>bob@example.com</span>
                   <Button size="sm" color="danger" variant="flat">
-                    Remove
+                    {t("inventory.create.accessSettings.userWithWriteAccess.remove")}
                   </Button>
                 </div>
               </div>

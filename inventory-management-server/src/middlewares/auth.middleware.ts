@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../errorHelper/AppError.js";
 import { auth } from "../lib/auth.js";
+import jwt from "jsonwebtoken";
+import { prisma } from "@/lib/prisma.js";
+import envConfig from "@/config/env.js";
+import { JWTPayload } from "better-auth";
 
 declare global {
   namespace Express {
@@ -17,26 +21,43 @@ declare global {
   }
 }
 
-/**
- * authMiddleware
- * ------------
- * Verifies the request by reading the better-auth session cookie.
- * Sets req.user so downstream handlers can access the current user.
- *
- * Strategy: use better-auth as the single source of truth for sessions.
- * Tokens in HttpOnly cookies are sent automatically by the browser (withCredentials:true),
- * so no manual Authorization header is needed.
- */
-export const authMiddleware = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+// ──────────────────────────────────────────────────────────────────────────────
+//              Authentication middleware
+// ──────────────────────────────────────────────────────────────────────────────
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Forward all incoming headers (including Cookie) to better-auth's session resolver
     const session = await auth.api.getSession({
       headers: req.headers as Record<string, string>,
     });
+
+    const accessToken = (await req.cookies["accessToken"]) || null;
+    if (accessToken) {
+      const data = jwt.verify(accessToken, envConfig.ACCESS_TOKEN_SECRET) as JWTPayload;
+
+      const user = await prisma.user.findUnique({
+        where: { id: data.userId as string },
+      });
+
+      if (!user) {
+        throw new AppError("Unauthorized – user not found", 401);
+      }
+
+      if (user.status === "BLOCKED") {
+        throw new AppError("Your account has been blocked by an admin", 403);
+      }
+
+      req.user = {
+        id: data.userId as string,
+        email: data.email as string,
+        name: data.name as string,
+        role: data.role as string,
+        status: data.status as string,
+        emailVerified: data.emailVerified as boolean,
+      };
+
+      return next();
+    }
 
     if (!session || !session.user) {
       throw new AppError("Unauthorized – please log in", 401);
@@ -76,19 +97,13 @@ export const authMiddleware = async (
  *   router.get("/admin-only", authMiddleware, roleMiddleware(["ADMIN"]), handler)
  */
 export const roleMiddleware =
-  (allowedRoles: string[]) =>
-  (req: Request, _res: Response, next: NextFunction) => {
+  (allowedRoles: string[]) => (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new AppError("Unauthorized", 401));
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return next(
-        new AppError(
-          `Forbidden – requires one of: ${allowedRoles.join(", ")}`,
-          403,
-        ),
-      );
+      return next(new AppError(`Forbidden – requires one of: ${allowedRoles.join(", ")}`, 403));
     }
 
     next();

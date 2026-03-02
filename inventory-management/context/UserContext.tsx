@@ -14,6 +14,8 @@ export interface IUser {
   image?: string;
 }
 
+type SessionType = "email-password" | "google" | "facebook";
+
 export interface IUserContextType {
   user: IUser | null;
   isLoading: boolean;
@@ -21,7 +23,7 @@ export interface IUserContextType {
   loadUser: () => void;
   removeUser: () => void;
   logout: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  refreshSession: (args: SessionType) => Promise<void>;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -38,15 +40,28 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Hydrate user state from the better-auth session cookie.
    * The cookie is HttpOnly and sent automatically by the browser — no localStorage needed.
    */
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (args?: SessionType) => {
     setIsLoading(true);
     try {
-      const session = await authService.getSession();
-      if (session?.user) {
-        const result = await authService.googleLoginSuccess(); // Optional: fetch latest user data after social login
+      // const session = await authService.getSession();
+      // console.log(session);
+      const user = localStorage.getItem("user");
+      if (user && JSON.parse(user) !== undefined) {
+        const userData = JSON.parse(user);
+        setUser(userData);
+        return;
+      }
+
+      if (args === "email-password") {
+        const result = await authService.getCurrentUser(); // Fetch latest user data
         saveUser(result.data); // Update context with latest user data
         return;
       }
+      // if (session?.user && (args === "google" || args === "facebook")) {
+      //   // const result = await authService.googleLoginSuccess(); // Optional: fetch latest user data after social login
+      //   saveUser(session.user); // Update context with latest user data
+      //   return;
+      // }
 
       setUser(null);
     } catch (error) {

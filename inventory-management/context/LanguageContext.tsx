@@ -1,8 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import en from "../messages/en.json";
-import pl from "../messages/pl.json";
+import en from "../locale/en.json";
+import pl from "../locale/pl.json";
 
 type Language = "en" | "pl";
 
@@ -33,7 +33,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const changeLanguage = (lang: Language) => {
     setLanguage(lang);
     localStorage.setItem("app-lang", lang);
-  }
+  };
 
   const t = (key: string) => {
     return (dictionaries[language] as any)[key] || key;

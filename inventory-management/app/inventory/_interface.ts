@@ -1,0 +1,63 @@
+export interface IIdTemplate {
+  id: string;
+  inventoryId: string;
+  version: number;
+  currentSequence: number;
+  fixedValueState: boolean;
+  fixedValue: string | null;
+  fixedPosition: number | null;
+  sequenceValueState: boolean;
+  sequenceValue: number | null;
+  sequenceValuePosition: number | null;
+  randomValueState: boolean;
+  randomValue: string | null;
+  randomValuePosition: number | null;
+  datetimeValueState: boolean;
+  datetimeValue: string | null;
+  datetimeValuePosition: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IInventory {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  quantity: number;
+  categoryName: string;
+  creatorName: string;
+  creatorId: string;
+  isPublic: boolean;
+  isInEditMode: boolean;
+  editingUserId: string | null;
+  version: number;
+  customString1State: boolean;
+  customString1Value: string | null;
+  customString2State: boolean;
+  customString2Value: string | null;
+  customString3State: boolean;
+  customString3Value: string | null;
+  customText1State: boolean;
+  customText1Value: string | null;
+  customText2State: boolean;
+  customText2Value: string | null;
+  customText3State: boolean;
+  customText3Value: string | null;
+  customInt1State: boolean;
+  customInt1Value: string | null;
+  customInt2State: boolean;
+  customInt2Value: string | null;
+  customInt3State: boolean;
+  customInt3Value: string | null;
+  customBool1State: boolean;
+  customBool1Value: string | null;
+  customBool2State: boolean;
+  customBool2Value: string | null;
+  customBool3State: boolean;
+  customBool3Value: string | null;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  idTemplate: IIdTemplate;
+}

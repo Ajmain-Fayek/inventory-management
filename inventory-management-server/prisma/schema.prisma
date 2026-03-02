@@ -7,6 +7,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// ----------------------------------------------------------
+//                Enums
+// ----------------------------------------------------------
+
 enum UserRole {
   ADMIN
   USER
@@ -16,6 +20,10 @@ enum UserStatus {
   ACTIVE
   BLOCKED
 }
+
+// ----------------------------------------------------------
+//                Authentication Models
+// ----------------------------------------------------------
 
 model User {
   id            String      @id
@@ -27,8 +35,14 @@ model User {
   updatedAt     DateTime    @updatedAt
   role          UserRole?   @default(USER)
   status        UserStatus? @default(ACTIVE)
-  sessions      Session[]
-  accounts      Account[]
+
+  // Relations
+  sessions               Session[]
+  accounts               Account[]
+  inventory_creator      Inventory[]   @relation(name: "inventory_creator")
+  inventory_editing_user Inventory[]   @relation(name: "inventory_editing_user")
+  writeAccesses          WriteAccess[]
+  items                  Item[]
 
   @@unique([email])
   @@map("user")
@@ -80,4 +94,221 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// ----------------------------------------------------------
+//                Inventory Management Models
+// ----------------------------------------------------------
+model Inventory {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  imageUrl    String?
+  quantity    Int     @default(0)
+
+  categoryName String?
+  category     Category? @relation(fields: [categoryName], references: [name], onDelete: SetNull)
+  creatorId    String
+  creator      User      @relation(name: "inventory_creator", fields: [creatorId], references: [id], onDelete: Cascade)
+  isPublic     Boolean   @default(false)
+
+  // Optimistic Lock
+  isInEditMode  Boolean @default(false)
+  editingUserId String?
+  editingUser   User?   @relation(name: "inventory_editing_user", fields: [editingUserId], references: [id], onDelete: SetNull)
+  version       Int     @default(0)
+
+  // Single-line text
+  customString1State Boolean @default(false)
+  customString1Value String?
+  customString2State Boolean @default(false)
+  customString2Value String?
+  customString3State Boolean @default(false)
+  customString3Value String?
+
+  // Mutli-line text
+  customText1State Boolean @default(false)
+  customText1Value String?
+  customText2State Boolean @default(false)
+  customText2Value String?
+  customText3State Boolean @default(false)
+  customText3Value String?
+
+  // Numeric
+  customInt1State Boolean @default(false)
+  customInt1Value String?
+  customInt2State Boolean @default(false)
+  customInt2Value String?
+  customInt3State Boolean @default(false)
+  customInt3Value String?
+
+  // Boolean
+  customBool1State Boolean @default(false)
+  customBool1Value String?
+  customBool2State Boolean @default(false)
+  customBool2Value String?
+  customBool3State Boolean @default(false)
+  customBool3Value String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  writeAccesses     WriteAccess[]
+  items             Item[]
+  inventoryTags     InventoryTag[]
+  customIdTemplates CustomIdTemplate[]
+
+  @@unique([title])
+  @@index([creatorId])
+  @@index([categoryName])
+  @@map("inventory")
+}
+
+model WriteAccess {
+  id          String    @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([inventoryId, userId])
+  @@index([inventoryId])
+  @@index([userId])
+  @@map("write_access")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  // Relations
+  inventoryTags InventoryTag[]
+
+  @@unique([name])
+  @@map("tag")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  inventories Inventory[]
+
+  @@unique([name])
+  @@map("category")
+}
+
+model InventoryTag {
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  tagName     String
+  tag         Tag       @relation(fields: [tagName], references: [name], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([inventoryId, tagName])
+  @@index([inventoryId])
+  @@index([tagName])
+  @@map("inventory_tag")
+}
+
+model Item {
+  id          String    @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  // Optimistic Lock
+  isInEditMode  Boolean @default(false)
+  editingUserId String?
+  editingUser   User?   @relation(fields: [editingUserId], references: [id], onDelete: SetNull)
+  version       Int     @default(0)
+
+  // Single-line text
+  customString1value String?
+  customString2value String?
+  customString3value String?
+
+  // Mutli-line text
+  customText1value String?
+  customText2value String?
+  customText3value String?
+
+  // Numeric
+  customInt1value Int?
+  customInt2value Int?
+  customInt3value Int?
+
+  // Boolean
+  customBool1value Boolean?
+  customBool2value Boolean?
+  customBool3value Boolean?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  customIdValues CustomIdValue[]
+
+  @@index([inventoryId])
+  @@map("item")
+}
+
+model CustomIdTemplate {
+  id          String    @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  version Int @default(0)
+
+  currentSequence Int?
+
+  fixedValueState Boolean @default(false)
+  fixedValue      String?
+  fixedPosition   Int?
+
+  sequenceValueState    Boolean @default(false)
+  sequenceValue         Int?
+  sequenceValuePosition Int?
+
+  randomValueState    Boolean @default(false)
+  randomValue         String?
+  randomValuePosition Int?
+
+  datetimeValueState    Boolean @default(false)
+  datetimeValue         String?
+  datetimeValuePosition Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([inventoryId])
+  @@map("custom_id_template")
+}
+
+model CustomIdValue {
+  id     String @id @default(uuid())
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  version Int @default(0)
+
+  fixedValue    String?
+  sequenceValue Int?
+  randomValue   String?
+  datetimeValue String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([itemId])
+  @@map("custom_id_value")
 }

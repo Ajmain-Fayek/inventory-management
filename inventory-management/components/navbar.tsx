@@ -27,7 +27,6 @@ import { SearchIcon, Logo } from "./icons";
 import { useUser } from "../context/UserContext";
 
 export const Navbar = () => {
-
   const { user, logout } = useUser();
 
   const { t } = useLanguage();
@@ -36,11 +35,11 @@ export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredNavItems = siteConfig.navItems.filter((item) =>
-    user ? item.href !== "/auth/login" && item.href !== "/auth/register" : item.href !== "/logout"
+    user ? item.href !== "/auth/login" && item.href !== "/auth/register" : item.href !== "/logout",
   );
 
   const filteredNavMenuItems = siteConfig.navMenuItems.filter((item) =>
-    user ? item.href !== "/auth/login" && item.href !== "/auth/register" : item.href !== "/logout"
+    user ? item.href !== "/auth/login" && item.href !== "/auth/register" : item.href !== "/logout",
   );
 
   const getColorClass = (href: string, isActive: boolean) => {
@@ -90,9 +89,7 @@ export const Navbar = () => {
               <Link
                 color="foreground"
                 data-active={pathname === item.href}
-                className={clsx(
-                  getColorClass(item.href, pathname === item.href)
-                )}
+                className={clsx(getColorClass(item.href, pathname === item.href))}
                 href={item.href === "/logout" ? "#" : item.href}
                 size="lg"
                 onPress={async () => {
@@ -102,7 +99,7 @@ export const Navbar = () => {
                   }
                 }}
               >
-                {item.label}
+                {t(`navbar.${item.label.toLowerCase().replace(/\s+/g, "")}`)}
               </Link>
             </NavbarItem>
           ))}
@@ -115,7 +112,6 @@ export const Navbar = () => {
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-
       </NavbarContent>
 
       <NavbarContent className="lg:hidden basis-1 pl-4" justify="end">
@@ -132,9 +128,7 @@ export const Navbar = () => {
               <Link
                 color="foreground"
                 data-active={pathname === item.href}
-                className={clsx(
-                  getColorClass(item.href, pathname === item.href)
-                )}
+                className={clsx(getColorClass(item.href, pathname === item.href))}
                 href={item.href === "/logout" ? "#" : item.href}
                 size="lg"
                 onPress={async () => {

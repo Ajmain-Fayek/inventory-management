@@ -39,15 +39,13 @@ export default function LoginPage() {
       await authService.login({ email, password });
 
       // Hydrate React state from the new session cookie
-      await refreshSession();
+      await refreshSession("email-password");
 
       // Redirect to the page the user originally wanted, or home
       const redirect = searchParams.get("redirect") || "/";
       router.push(redirect);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Failed to login. Please check your credentials.",
-      );
+      setError(err.response?.data?.message || "Failed to login. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -92,11 +90,15 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
               {t("auth.login")}
             </h1>
-            <p className="text-default-500 text-sm">Welcome back! Sign in to continue</p>
+            <p className="text-default-500 text-sm">{t("auth.login.subtitle")}</p>
           </CardHeader>
           <CardBody className="px-8 pb-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {error && <p className="text-danger text-sm text-center bg-danger/10 p-2 rounded-md">{error}</p>}
+              {error && (
+                <p className="text-danger text-sm text-center bg-danger/10 p-2 rounded-md">
+                  {error}
+                </p>
+              )}
               <Input
                 label="Email"
                 type="email"
@@ -154,7 +156,7 @@ export default function LoginPage() {
                 onClick={handleGoogleLogin}
                 startContent={isSocialLoading !== "google" && <FcGoogle size={18} />}
               >
-                Continue with Google
+                {t("auth.continue_with_google")}
               </Button>
               <Button
                 variant="flat"
@@ -162,14 +164,18 @@ export default function LoginPage() {
                 isLoading={isSocialLoading === "facebook"}
                 isDisabled={isSocialLoading !== null}
                 onClick={handleFacebookLogin}
-                startContent={isSocialLoading !== "facebook" && <FaFacebook size={18} className="text-blue-600" />}
+                startContent={
+                  isSocialLoading !== "facebook" && (
+                    <FaFacebook size={18} className="text-blue-600" />
+                  )
+                }
               >
-                Continue with Facebook
+                {t("auth.continue_with_facebook")}
               </Button>
             </div>
 
             <p className="text-center text-sm text-default-500 mt-6">
-              Don&apos;t have an account?{" "}
+              {t("auth.dont_have_account")}{" "}
               <Link href="/auth/register" size="sm" className="font-semibold">
                 {t("auth.register")}
               </Link>

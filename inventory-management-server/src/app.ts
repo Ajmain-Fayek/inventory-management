@@ -8,6 +8,7 @@ import envConfig from "./config/env.js";
 import { IndexRouter } from "./routes/index.js";
 import { globalErrorHandler } from "./middlewares/globalErrorHandler.js";
 import { notFound } from "./middlewares/notFound.js";
+import cookierParser from "cookie-parser";
 
 const app: Application = express();
 
@@ -24,6 +25,7 @@ app.use(
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json());
+app.use(cookierParser());
 
 // Routes
 app.use("/api/v1", IndexRouter);

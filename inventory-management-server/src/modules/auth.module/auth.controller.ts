@@ -34,8 +34,8 @@ const registerUser = catchAsync(async (req: Request, res: Response) => {
   const result = await AuthService.registerUser(payload);
   const { accessToken, refreshToken, token, ...rest } = result;
 
-  tokenUtils.setAccessTokenCookie(res, accessToken);
-  tokenUtils.setRefreshTokenCookie(res, refreshToken);
+  tokenUtils.setAccessTokenCookie(res, await accessToken);
+  tokenUtils.setRefreshTokenCookie(res, await refreshToken);
   // Use the better-auth session token (not the JWT accessToken) for the session cookie
   tokenUtils.setBetterAuthSessionCookie(res, token!);
 
