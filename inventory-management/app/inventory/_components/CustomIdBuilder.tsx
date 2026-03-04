@@ -27,6 +27,7 @@ import { GripVertical, Plus, AlertTriangle } from "lucide-react";
 /* ================= TYPES ================= */
 
 type SegmentType = "fixed" | "random" | "sequence" | "datetime";
+const UNIQUE_TYPES: SegmentType[] = ["random", "sequence", "datetime"];
 type RandomMode = "20bit" | "32bit" | "6digit" | "9digit";
 type DateFormat = "yyyy" | "yy" | "yyyyMM" | "yyyyMMdd" | "yyyyMMddHHmm";
 type Separator = "_" | "-";
@@ -47,18 +48,22 @@ export interface CustomIdValues {
   fixedValueState: boolean;
   fixedValue?: string | null;
   fixedPosition?: number | null;
+  fixedSeparator?: string | null;
 
   sequenceValueState: boolean;
-  sequenceValue?: number | null;
+  sequenceValue?: string | null;
   sequenceValuePosition?: number | null;
+  sequenceSeparator?: string | null;
 
   randomValueState: boolean;
   randomValue?: string | null;
   randomValuePosition?: number | null;
+  randomSeparator?: string | null;
 
   datetimeValueState: boolean;
   datetimeValue?: string | null;
   datetimeValuePosition?: number | null;
+  datetimeSeparator?: string | null;
 }
 
 interface CustomIdBuilderProps {
@@ -110,7 +115,7 @@ function formatDate(format: DateFormat = "yyyy"): string {
 
 function generateSequence(format: string = "D"): string {
   const base = 1;
-  if (format === "D_") return `${base}`;
+  if (format === "D") return `${base}`;
   const match = format.match(/^D([1-9])/);
   if (match) {
     const digits = parseInt(match[1]);
@@ -142,10 +147,10 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
 
   /* ========= DERIVED DATA ========= */
 
-  const existingTypes = useMemo(() => new Set(items.map((i) => i.type)), [items]);
+  // const existingTypes = useMemo(() => new Set(items.map((i) => i.type)), [items]);
 
   const isUniqueType = (type: SegmentType, excludeId?: string): boolean => {
-    if (type === "fixed") return true;
+    // if (type === "fixed") return true;
     return !items.some((item) => item.type === type && item.id !== excludeId);
   };
 
@@ -215,11 +220,18 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
 
   const addSegment = () => {
     if (items.length >= MAX_ITEMS) return;
+
+    const unusedUniqueType = UNIQUE_TYPES.find((type) => !items.some((item) => item.type === type));
+    const selectedType: SegmentType = unusedUniqueType ?? "fixed";
+
     const newSeg: Segment = {
       id: crypto.randomUUID(),
-      type: "fixed",
-      value: "",
+      type: selectedType,
       separator: "_",
+      ...(selectedType === "random" && { randomMode: "20bit" }),
+      ...(selectedType === "datetime" && { dateFormat: "yyyy" }),
+      ...(selectedType === "sequence" && { sequenceFormat: "D" }),
+      ...(selectedType === "fixed" && { value: "" }),
     };
     onItemsChange([...items, newSeg]);
     setDuplicateWarning(null);
@@ -289,18 +301,22 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
       fixedValueState: !!fixedItem,
       fixedValue: fixedItem?.value ?? null,
       fixedPosition: fixedItem ? items.indexOf(fixedItem) : null,
+      fixedSeparator: fixedItem?.separator ?? null,
 
       sequenceValueState: !!sequenceItem,
-      sequenceValue: sequenceItem ? parseInt(generateSequence(sequenceItem.sequenceFormat)) : null,
+      sequenceValue: sequenceItem ? sequenceItem.sequenceFormat : null,
       sequenceValuePosition: sequenceItem ? items.indexOf(sequenceItem) : null,
+      sequenceSeparator: sequenceItem?.separator ?? null,
 
       randomValueState: !!randomItem,
       randomValue: randomItem?.randomMode ?? null,
       randomValuePosition: randomItem ? items.indexOf(randomItem) : null,
+      randomSeparator: randomItem?.separator ?? null,
 
       datetimeValueState: !!datetimeItem,
       datetimeValue: datetimeItem?.dateFormat ?? null,
       datetimeValuePosition: datetimeItem ? items.indexOf(datetimeItem) : null,
+      datetimeSeparator: datetimeItem?.separator ?? null,
     };
 
     onChange(values);
@@ -464,7 +480,13 @@ function SortableItem({
         size="sm"
         aria-label="Segment type"
       >
-        <SelectItem key="fixed">Fixed</SelectItem>
+        <SelectItem
+          key="fixed"
+          isReadOnly={!isUniqueType("fixed", item.id)}
+          className={`${!isUniqueType("fixed", item.id) ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
+          Fixed
+        </SelectItem>
         <SelectItem
           key="random"
           isReadOnly={!isUniqueType("random", item.id)}
@@ -491,7 +513,7 @@ function SortableItem({
       {/* Type-specific controls */}
       {item.type === "fixed" && (
         <Input
-          value={item.value ?? ""}
+          value={item.value}
           onValueChange={(val) => updateSegment(item.id, { value: val })}
           className="flex-1"
           size="sm"
@@ -502,7 +524,7 @@ function SortableItem({
 
       {item.type === "sequence" && (
         <Input
-          value={item.sequenceFormat ?? "D"}
+          value={item.sequenceFormat}
           onValueChange={(val) => {
             // Always keep the "D" prefix; allow at most one digit 1-9 after it
             if (val === "D" || val === "") {
@@ -538,6 +560,7 @@ function SortableItem({
               randomMode: Array.from(keys)[0] as RandomMode,
             })
           }
+          value={item.randomMode}
           className="flex-1"
           size="sm"
           aria-label="Random mode"
@@ -557,6 +580,7 @@ function SortableItem({
               dateFormat: Array.from(keys)[0] as DateFormat,
             })
           }
+          value={item.dateFormat}
           className="flex-1"
           size="sm"
           aria-label="Date format"

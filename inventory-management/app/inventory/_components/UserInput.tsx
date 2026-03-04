@@ -5,21 +5,22 @@ import { Chip } from "@heroui/chip";
 import { Spinner } from "@heroui/spinner";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { tagService } from "@/services/tag.service";
+import { userService } from "@/services/user.service";
 
-export interface Tag {
+export interface User {
   id: string;
   name: string;
+  email: string;
 }
 
-interface TagInputProps {
-  value: Tag[];
-  onChange: (tags: Tag[]) => void;
+interface UserInputProps {
+  value: User[];
+  onChange: (tags: User[]) => void;
 }
 
-export default function TagInput({ value, onChange }: TagInputProps) {
+export default function UserInput({ value, onChange }: UserInputProps) {
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<Tag[]>([]);
+  const [suggestions, setSuggestions] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -37,10 +38,10 @@ export default function TagInput({ value, onChange }: TagInputProps) {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const searchTags = async (tag: string) => {
+  const searchTags = async (user: string) => {
     try {
       setLoading(true);
-      const res = await tagService.getTags(tag);
+      const res = await userService.getUser(user);
       setSuggestions(res.data || []);
       setShowDropdown(true);
     } catch (error) {
@@ -50,50 +51,38 @@ export default function TagInput({ value, onChange }: TagInputProps) {
     }
   };
 
-  const addTag = (tag: Tag) => {
-    if (!value.find((t) => t.id === tag.id)) {
-      onChange([...value, tag]);
+  const addUser = (user: User) => {
+    if (!value.find((u) => u.id === user.id)) {
+      onChange([...value, user]);
     }
     setQuery("");
     setShowDropdown(false);
   };
 
-  const createTag = async () => {
-    try {
-      const res = await tagService.createTag(query);
-      onChange([...value, res.data]);
-
-      setQuery("");
-      setShowDropdown(false);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const removeTag = (id: string) => {
+  const removeUser = (id: string) => {
     onChange(value.filter((t) => t.id !== id));
   };
 
-  const tagExists =
-    suggestions.length > 0 &&
-    suggestions.some((tag) => tag.name.toLowerCase() === query.toLowerCase());
+  const userExists =
+    suggestions.length !== 0 &&
+    suggestions.some((user) => user.name.toLowerCase() === query.toLowerCase());
 
   return (
     <div className="relative w-full">
       <Input
-        label="Tags"
-        placeholder="Type to search or create tag"
+        label="Users"
+        placeholder="Type email to search user"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         variant="bordered"
         onFocus={() => setShowDropdown(true)}
       />
 
-      {/* Selected Tags */}
+      {/* Selected User */}
       <div className="flex flex-wrap gap-2 mt-2">
-        {value.map((tag) => (
-          <Chip key={tag.id} onClose={() => removeTag(tag.id)}>
-            {tag.name}
+        {value.map((user) => (
+          <Chip key={user.id} onClose={() => removeUser(user.id)}>
+            {user.name}
           </Chip>
         ))}
       </div>
@@ -107,23 +96,19 @@ export default function TagInput({ value, onChange }: TagInputProps) {
             </div>
           ) : (
             <>
-              {suggestions.map((tag) => (
+              {suggestions.map((user) => (
                 <div
-                  key={tag.id}
-                  onClick={() => addTag(tag)}
+                  key={user.id}
+                  onClick={() => addUser(user)}
                   className="px-4 py-2 hover:bg-default-100 cursor-pointer"
                 >
-                  {tag.name}
+                  {user.email}
                 </div>
               ))}
 
-              {!tagExists && (
-                <div
-                  onClick={createTag}
-                  className="px-4 py-2 hover:bg-default-100 cursor-pointer flex items-center gap-2 text-primary"
-                >
-                  <Plus size={16} />
-                  Create "{query}"
+              {!userExists && (
+                <div className="px-4 text-red-600 py-2 hover:bg-default-100 cursor-pointer flex items-center gap-2">
+                  User not found.
                 </div>
               )}
             </>

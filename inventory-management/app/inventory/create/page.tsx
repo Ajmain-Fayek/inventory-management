@@ -1,10 +1,18 @@
 "use client";
 
-import { Input, Textarea } from "@heroui/input";
-import { Button } from "@heroui/button";
+import CustomIdBuilder, { CustomIdValues, Segment } from "../_components/CustomIdBuilder";
+import { inventoryService } from "@/services/inventory.service";
+import { categoryService } from "@/services/category.service";
+import UserInput, { User } from "../_components/UserInput";
+import { useLanguage } from "@/context/LanguageContext";
+import TagInput, { Tag } from "../_components/TagInput";
 import { Select, SelectItem } from "@heroui/select";
-import { Switch } from "@heroui/switch";
+import { Input, Textarea } from "@heroui/input";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, Tab } from "@heroui/tabs";
+import { Button } from "@heroui/button";
+import { Switch } from "@heroui/switch";
 import { motion } from "framer-motion";
 import {
   Save,
@@ -14,48 +22,69 @@ import {
   CheckCircle,
   Database,
   Users,
-  Plus,
-  GripVertical,
   BarChart3,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useLanguage } from "@/context/LanguageContext";
-import { categoryService } from "@/services/category.service";
-import TagInput from "../_components/TagInput";
-import CustomIdBuilder, { CustomIdValues, Segment } from "../_components/CustomIdBuilder";
+import CustomFieldsBuilder, {
+  CustomFieldsState,
+  EMPTY_CUSTOM_FIELDS,
+} from "../_components/CustomFieldsBuilder";
+import { transformToCustomFieldConfig } from "../_helper.ts/transformToCustomFieldConfig";
 
+// -------------------------------------------------------
+// Component Function Start
+// -------------------------------------------------------
 export default function CreateInventoryPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const [categories, setCategories] = useState<{ id: string; name: string }[] | undefined>(
-    undefined,
-  );
   const [loading, setLoading] = useState(true);
-  const [tags, setTags] = useState<
-    {
-      id: string;
-      name: string;
-    }[]
-  >([]);
+
+  // General Settings Tab States
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [category, setCategory] = useState<string>("");
+  const [tags, setTags] = useState<Tag[]>([]);
+  // store all categories for Selection
+  const [categories, setCategories] = useState<{ id: string; name: string }[] | undefined>(
+    undefined,
+  );
+
+  // Custom ID Tab states
   const [customIdValues, setCustomIdValues] = useState<CustomIdValues>({
+    currentSequence: 1,
     fixedValueState: true,
     fixedValue: "📚",
     fixedPosition: 0,
-    sequenceValueState: false,
-    randomValueState: false,
-    datetimeValueState: false,
+    fixedSeparator: "_",
+    sequenceValueState: true,
+    sequenceValue: "D",
+    sequenceValuePosition: 1,
+    sequenceSeparator: "_",
+    randomValueState: true,
+    randomValue: "20bit",
+    randomValuePosition: 2,
+    randomSeparator: "_",
+    datetimeValueState: true,
+    datetimeValue: "yyyy",
+    datetimeValuePosition: 3,
+    datetimeSeparator: "_",
   });
-  // Lifted here so HeroUI Tabs unmounting the panel doesn't wipe the builder state
+
+  // console.log(customIdValues);
   const [customIdItems, setCustomIdItems] = useState<Segment[]>([
     { id: crypto.randomUUID(), type: "fixed", value: "📚", separator: "_" },
+    { id: crypto.randomUUID(), type: "random", randomMode: "20bit", separator: "_" },
+    { id: crypto.randomUUID(), type: "sequence", sequenceFormat: "D", separator: "_" },
+    { id: crypto.randomUUID(), type: "datetime", dateFormat: "yyyy", separator: "_" },
   ]);
 
-  console.log(customIdItems, customIdValues);
+  // Custom Fields Tab States
+  const [customFields, setCustomFields] = useState<CustomFieldsState>(EMPTY_CUSTOM_FIELDS);
 
+  // Access Tab States
+  const [users, setUsers] = useState<User[]>([]);
+  const [isInvPublic, setIsInvPublic] = useState<boolean>(false);
+
+  // Load Categories for selection
   const getCategories = async () => {
     const categories = await categoryService.getCategories();
 
@@ -66,6 +95,29 @@ export default function CreateInventoryPage() {
   useEffect(() => {
     getCategories();
   }, []);
+
+  // ---------------------------------------------------------
+  //        Ready Payload for creating Inventory
+  // ---------------------------------------------------------
+  const payload = {
+    title,
+    description,
+    categoryName: category,
+    tags: tags.map((t) => t.name),
+    idTemplate: {
+      ...customIdValues,
+    },
+    customFieldConfig: transformToCustomFieldConfig(customFields),
+    isPublic: isInvPublic,
+    writeAccess: users.map((u) => u.id),
+  };
+
+  const handleSaveInventory = async () => {
+    const response = await inventoryService.createInventory(payload);
+    console.log(response);
+  };
+
+  // console.log(users);
 
   return (
     <div className="flex flex-col gap-8 py-8 px-4 max-w-4xl mx-auto">
@@ -84,7 +136,7 @@ export default function CreateInventoryPage() {
           </div>
         </div>
 
-        <Button color="primary" startContent={<Save size={18} />}>
+        <Button color="primary" onPress={handleSaveInventory} startContent={<Save size={18} />}>
           {t("inventory.create.button")}
         </Button>
       </motion.div>
@@ -177,41 +229,7 @@ export default function CreateInventoryPage() {
           }
         >
           <div className="pt-4 max-w-4xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">{t("inventory.create.customFields.heading")}</h3>
-              <Button size="sm" color="primary" startContent={<Plus size={16} />}>
-                {t("inventory.create.customFields.button")}
-              </Button>
-            </div>
-            <div className="flex flex-col gap-4 w-full">
-              {/* Example fields manually listed for UI demo */}
-              <div className="flex items-center gap-4 bg-content2 p-4 rounded-lg border border-default-200">
-                <GripVertical className="text-default-400 cursor-grab" />
-                <div className="flex-1">
-                  <p className="font-bold">Condition</p>
-                  <p className="text-xs text-default-500">Single-line text</p>
-                </div>
-                <Switch defaultSelected size="sm">
-                  {t("inventory.create.customFields.toggle")}
-                </Switch>
-                <Button isIconOnly color="danger" variant="light">
-                  X
-                </Button>
-              </div>
-              <div className="flex items-center gap-4 bg-content2 p-4 rounded-lg border border-default-200">
-                <GripVertical className="text-default-400 cursor-grab" />
-                <div className="flex-1">
-                  <p className="font-bold">Warranty Expiry</p>
-                  <p className="text-xs text-default-500">Date</p>
-                </div>
-                <Switch defaultSelected size="sm">
-                  {t("inventory.create.customFields.toggle")}
-                </Switch>
-                <Button isIconOnly color="danger" variant="light">
-                  X
-                </Button>
-              </div>
-            </div>
+            <CustomFieldsBuilder fields={customFields} onFieldsChange={setCustomFields} />
           </div>
         </Tab>
 
@@ -235,26 +253,23 @@ export default function CreateInventoryPage() {
                   {t("inventory.create.accessSettings.publicInventory.hint")}
                 </p>
               </div>
-              <Switch color="success" />
+              <Switch
+                color="success"
+                isSelected={isInvPublic}
+                onValueChange={(e) => setIsInvPublic(e)}
+              />
             </div>
 
-            <div>
+            <div
+              className={`relative transition-opacity ${
+                isInvPublic ? "opacity-50 pointer-events-none select-none" : ""
+              }`}
+              aria-disabled={isInvPublic}
+            >
               <h4 className="font-bold mb-2">
                 {t("inventory.create.accessSettings.userWithWriteAccess")}
               </h4>
-              <Input
-                placeholder={t("inventory.create.accessSettings.userWithWriteAccess.placeholder")}
-                variant="bordered"
-                className="mb-4"
-              />
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center p-3 bg-default-100 rounded-md">
-                  <span>bob@example.com</span>
-                  <Button size="sm" color="danger" variant="flat">
-                    {t("inventory.create.accessSettings.userWithWriteAccess.remove")}
-                  </Button>
-                </div>
-              </div>
+              <UserInput value={users} onChange={setUsers} />
             </div>
           </div>
         </Tab>

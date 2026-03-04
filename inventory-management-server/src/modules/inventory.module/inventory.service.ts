@@ -132,9 +132,11 @@ const createTag = async (name: string) => {
 };
 
 const createInventory = async (userId: string, payload: TCreateInventoryPayload) => {
+  console.log(payload);
   const imageUrl = payload.imageUrl ?? null;
   const tags = normalizeTagNames(payload.tags);
   const customFieldConfig = normalizeCustomFieldConfig(payload.customFieldConfig);
+  // const customFieldConfig = payload.customFieldConfig;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -147,7 +149,7 @@ const createInventory = async (userId: string, payload: TCreateInventoryPayload)
         data: {
           title: payload.title.toLowerCase(),
           description: payload.description ?? null,
-          quantity: payload.quantity,
+          quantity: payload.quantity ?? 0,
           isPublic: payload.isPublic ?? false,
           imageUrl,
           categoryName,
@@ -166,6 +168,12 @@ const createInventory = async (userId: string, payload: TCreateInventoryPayload)
             inventoryId: inventory.id,
             ...normalizeIdTemplate(payload.idTemplate),
           },
+        });
+      }
+
+      if (payload.writeAccess?.length > 0 && payload.writeAccess !== undefined) {
+        await tx.writeAccess.createMany({
+          data: [...payload.writeAccess?.map((u) => ({ userId: u, inventoryId: inventory.id }))],
         });
       }
 
@@ -323,10 +331,7 @@ const getInventoryById = async (inventoryId: string) => {
 // };
 
 // Get Inventories with pagination, filtering, and sorting
-const getInventories = async (options?: {
-  page?: number;
-  recordLimit?: number;
-}) => {
+const getInventories = async (options?: { page?: number; recordLimit?: number }) => {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const recordLimit = options?.recordLimit && options.recordLimit > 0 ? options.recordLimit : 25;
   const limit = Math.min(recordLimit, 100); // safety for limit injection

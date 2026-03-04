@@ -1,7 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 
 export const inventoryService = {
-  createInventory: async (userId: string, payload: any) => {
+  createInventory: async (payload: any) => {
     const response = await axiosInstance.post("/api/v1/inventories", payload);
     return response.data;
   },

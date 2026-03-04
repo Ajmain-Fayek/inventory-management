@@ -18,6 +18,8 @@ const createInventory = catchAsync(async (req: Request, res: Response) => {
     throw new AppError("Unauthorized", status.UNAUTHORIZED);
   }
 
+  console.log(await req.body);
+
   const result = await InventoryService.createInventory(req.user.id, await req.body);
 
   sendResponse(res, {

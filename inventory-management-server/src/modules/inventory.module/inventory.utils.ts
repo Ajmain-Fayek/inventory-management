@@ -56,28 +56,51 @@ const customFieldStateValuePairs: TStateValuePair[] = [
 export type TNormalizedCustomFieldConfig = Partial<{
   customString1State: boolean;
   customString1Value: string | null;
+  customString1ShowInTable: string | null;
+
   customString2State: boolean;
   customString2Value: string | null;
+  customString2ShowInTable: string | null;
+
   customString3State: boolean;
   customString3Value: string | null;
+  customString3ShowInTable: string | null;
+
   customText1State: boolean;
   customText1Value: string | null;
+  customText1ShowInTable: string | null;
+
   customText2State: boolean;
   customText2Value: string | null;
+  customText2ShowInTable: string | null;
+
   customText3State: boolean;
   customText3Value: string | null;
+  customText3ShowInTable: string | null;
+
   customInt1State: boolean;
   customInt1Value: string | null;
+  customInt1ShowInTable: string | null;
+
   customInt2State: boolean;
   customInt2Value: string | null;
+  customInt2ShowInTable: string | null;
+
   customInt3State: boolean;
   customInt3Value: string | null;
+  customInt3ShowInTable: string | null;
+
   customBool1State: boolean;
   customBool1Value: string | null;
+  customBool1ShowInTable: string | null;
+
   customBool2State: boolean;
   customBool2Value: string | null;
+  customBool2ShowInTable: string | null;
+
   customBool3State: boolean;
   customBool3Value: string | null;
+  customBool3ShowInTable: string | null;
 }>;
 
 export const normalizeCustomFieldConfig = (
@@ -145,15 +168,22 @@ export interface TNormalizedIdTemplate {
   fixedValueState: boolean;
   fixedValue: string | null;
   fixedPosition: number | null;
+  fixedSeparator: string | null;
+
   sequenceValueState: boolean;
-  sequenceValue: number | null;
+  sequenceValue: string | null;
   sequenceValuePosition: number | null;
+  sequenceSeparator: string | null;
+
   randomValueState: boolean;
   randomValue: string | null;
   randomValuePosition: number | null;
+  randomSeparator: string | null;
+
   datetimeValueState: boolean;
   datetimeValue: string | null;
   datetimeValuePosition: number | null;
+  datetimeSeparator: string | null;
 }
 
 export const normalizeIdTemplate = (template: TAnyTemplateInput): TNormalizedIdTemplate => {
@@ -162,35 +192,43 @@ export const normalizeIdTemplate = (template: TAnyTemplateInput): TNormalizedIdT
     fixedValueState: template.fixedValueState ?? false,
     fixedValue: null,
     fixedPosition: null,
+    fixedSeparator: null,
     sequenceValueState: template.sequenceValueState ?? false,
     sequenceValue: null,
     sequenceValuePosition: null,
+    sequenceSeparator: null,
     randomValueState: template.randomValueState ?? false,
     randomValue: null,
     randomValuePosition: null,
+    randomSeparator: null,
     datetimeValueState: template.datetimeValueState ?? false,
     datetimeValue: null,
     datetimeValuePosition: null,
+    datetimeSeparator: null,
   };
 
   if (normalized.fixedValueState) {
     normalized.fixedValue = template.fixedValue;
     normalized.fixedPosition = template.fixedPosition;
+    normalized.fixedSeparator = template.fixedSeparator;
   }
 
   if (normalized.sequenceValueState) {
     normalized.sequenceValue = template.sequenceValue;
     normalized.sequenceValuePosition = template.sequenceValuePosition;
+    normalized.sequenceSeparator = template.sequenceSeparator;
   }
 
   if (normalized.randomValueState) {
     normalized.randomValue = template.randomValue;
     normalized.randomValuePosition = template.randomValuePosition;
+    normalized.randomSeparator = template.randomSeparator;
   }
 
   if (normalized.datetimeValueState) {
     normalized.datetimeValue = template.datetimeValue;
     normalized.datetimeValuePosition = template.datetimeValuePosition;
+    normalized.datetimeSeparator = template.datetimeSeparator;
   }
 
   return normalized;
