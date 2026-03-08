@@ -62,8 +62,6 @@ const slotPositionSchema = z.number().int().min(0).max(3);
 // Custom ID Template Validation Schema
 const customIdTemplateSchema = z
   .object({
-    currentSequence: z.number().int().positive().optional(),
-
     fixedValueState: z.boolean().optional(),
     fixedValue: z.string().trim().nullable().optional(),
     fixedPosition: slotPositionSchema.nullable().optional(),
@@ -102,6 +100,12 @@ const customIdTemplateSchema = z
     },
   );
 
+export const writeAccess = z.object({
+  id: z.string().trim(),
+  name: z.string().trim(),
+  email: z.email().trim(),
+});
+
 // Create Inventory Validation Schemas
 export const createInventorySchema = z
   .object({
@@ -114,21 +118,22 @@ export const createInventorySchema = z
     customFieldConfig: customFieldConfigSchema.optional(),
     idTemplate: customIdTemplateSchema.required(),
     tags: z.string().array().optional(),
-    writeAccess: z.string().array().optional(),
+    writeAccess: writeAccess.array().optional() || [],
   })
   .strict();
 
 export const updateInventorySchema = z
   .object({
-    title: z.string().trim().optional(),
+    title: z.string().trim(),
     description: z.string().max(4000).optional(),
-    quantity: z.number().int().nonnegative().default(0),
+    quantity: z.number().int().nonnegative().default(0).optional(),
     isPublic: z.boolean().optional().default(false),
     imageUrl: z.string().optional(),
     categoryName: z.string().optional(),
     customFieldConfig: customFieldConfigSchema.optional(),
     idTemplate: customIdTemplateSchema.required(),
     tags: z.string().array().optional(),
+    writeAccess: writeAccess.array().optional() || [],
   })
   .strict()
   .refine((payload) => Object.keys(payload).length > 0, {

@@ -36,71 +36,89 @@ type TCustomFieldValueKey =
   | "customBool2Value"
   | "customBool3Value";
 
-type TStateValuePair = readonly [TCustomFieldStateKey, TCustomFieldValueKey];
+type TCustomFieldShowInTable =
+  | "customString1ShowInTable"
+  | "customString2ShowInTable"
+  | "customString3ShowInTable"
+  | "customText1ShowInTable"
+  | "customText2ShowInTable"
+  | "customText3ShowInTable"
+  | "customInt1ShowInTable"
+  | "customInt2ShowInTable"
+  | "customInt3ShowInTable"
+  | "customBool1ShowInTable"
+  | "customBool2ShowInTable"
+  | "customBool3ShowInTable";
+
+type TStateValuePair = readonly [
+  TCustomFieldStateKey,
+  TCustomFieldValueKey,
+  TCustomFieldShowInTable,
+];
 
 const customFieldStateValuePairs: TStateValuePair[] = [
-  ["customString1State", "customString1Value"],
-  ["customString2State", "customString2Value"],
-  ["customString3State", "customString3Value"],
-  ["customText1State", "customText1Value"],
-  ["customText2State", "customText2Value"],
-  ["customText3State", "customText3Value"],
-  ["customInt1State", "customInt1Value"],
-  ["customInt2State", "customInt2Value"],
-  ["customInt3State", "customInt3Value"],
-  ["customBool1State", "customBool1Value"],
-  ["customBool2State", "customBool2Value"],
-  ["customBool3State", "customBool3Value"],
+  ["customString1State", "customString1Value", "customString1ShowInTable"],
+  ["customString2State", "customString2Value", "customString2ShowInTable"],
+  ["customString3State", "customString3Value", "customString3ShowInTable"],
+  ["customText1State", "customText1Value", "customText1ShowInTable"],
+  ["customText2State", "customText2Value", "customText2ShowInTable"],
+  ["customText3State", "customText3Value", "customText3ShowInTable"],
+  ["customInt1State", "customInt1Value", "customInt1ShowInTable"],
+  ["customInt2State", "customInt2Value", "customInt2ShowInTable"],
+  ["customInt3State", "customInt3Value", "customInt3ShowInTable"],
+  ["customBool1State", "customBool1Value", "customBool1ShowInTable"],
+  ["customBool2State", "customBool2Value", "customBool2ShowInTable"],
+  ["customBool3State", "customBool3Value", "customBool3ShowInTable"],
 ] as const;
 
 export type TNormalizedCustomFieldConfig = Partial<{
   customString1State: boolean;
   customString1Value: string | null;
-  customString1ShowInTable: string | null;
+  customString1ShowInTable: boolean | null;
 
   customString2State: boolean;
   customString2Value: string | null;
-  customString2ShowInTable: string | null;
+  customString2ShowInTable: boolean | null;
 
   customString3State: boolean;
   customString3Value: string | null;
-  customString3ShowInTable: string | null;
+  customString3ShowInTable: boolean | null;
 
   customText1State: boolean;
   customText1Value: string | null;
-  customText1ShowInTable: string | null;
+  customText1ShowInTable: boolean | null;
 
   customText2State: boolean;
   customText2Value: string | null;
-  customText2ShowInTable: string | null;
+  customText2ShowInTable: boolean | null;
 
   customText3State: boolean;
   customText3Value: string | null;
-  customText3ShowInTable: string | null;
+  customText3ShowInTable: boolean | null;
 
   customInt1State: boolean;
   customInt1Value: string | null;
-  customInt1ShowInTable: string | null;
+  customInt1ShowInTable: boolean | null;
 
   customInt2State: boolean;
   customInt2Value: string | null;
-  customInt2ShowInTable: string | null;
+  customInt2ShowInTable: boolean | null;
 
   customInt3State: boolean;
   customInt3Value: string | null;
-  customInt3ShowInTable: string | null;
+  customInt3ShowInTable: boolean | null;
 
   customBool1State: boolean;
   customBool1Value: string | null;
-  customBool1ShowInTable: string | null;
+  customBool1ShowInTable: boolean | null;
 
   customBool2State: boolean;
   customBool2Value: string | null;
-  customBool2ShowInTable: string | null;
+  customBool2ShowInTable: boolean | null;
 
   customBool3State: boolean;
   customBool3Value: string | null;
-  customBool3ShowInTable: string | null;
+  customBool3ShowInTable: boolean | null;
 }>;
 
 export const normalizeCustomFieldConfig = (
@@ -111,10 +129,13 @@ export const normalizeCustomFieldConfig = (
   }
 
   const data: Partial<
-    Record<TCustomFieldStateKey | TCustomFieldValueKey, string | number | boolean | null>
+    Record<
+      TCustomFieldStateKey | TCustomFieldValueKey | TCustomFieldShowInTable,
+      string | number | boolean | null
+    >
   > = {};
 
-  for (const [stateKey, valueKey] of customFieldStateValuePairs) {
+  for (const [stateKey, valueKey, showKey] of customFieldStateValuePairs) {
     if (stateKey in customFieldConfig) {
       const rawState = customFieldConfig[stateKey];
       if (rawState !== undefined) {
@@ -123,15 +144,17 @@ export const normalizeCustomFieldConfig = (
 
       if (rawState === false) {
         data[valueKey] = null;
+        data[showKey] = null;
         continue;
       }
     }
 
     if (valueKey in customFieldConfig) {
-      const rawValue = customFieldConfig[valueKey];
-      if (rawValue !== undefined) {
-        data[valueKey] = rawValue ?? null;
-      }
+      data[valueKey] = customFieldConfig[valueKey] ?? null;
+    }
+
+    if (showKey in customFieldConfig) {
+      data[showKey] = customFieldConfig[showKey] ?? null;
     }
   }
 
@@ -164,7 +187,6 @@ export const normalizeTagNames = (tags?: string[]) => {
 };
 
 export interface TNormalizedIdTemplate {
-  currentSequence: number;
   fixedValueState: boolean;
   fixedValue: string | null;
   fixedPosition: number | null;
@@ -188,7 +210,6 @@ export interface TNormalizedIdTemplate {
 
 export const normalizeIdTemplate = (template: TAnyTemplateInput): TNormalizedIdTemplate => {
   const normalized: TNormalizedIdTemplate = {
-    currentSequence: template.currentSequence ?? 0,
     fixedValueState: template.fixedValueState ?? false,
     fixedValue: null,
     fixedPosition: null,

@@ -1,11 +1,10 @@
 "use client";
 
+import { userService } from "@/services/user.service";
+import { useEffect, useState } from "react";
+import { Spinner } from "@heroui/spinner";
 import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
-import { Spinner } from "@heroui/spinner";
-import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
-import { userService } from "@/services/user.service";
 
 export interface User {
   id: string;

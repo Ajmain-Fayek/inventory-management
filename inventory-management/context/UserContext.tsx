@@ -14,7 +14,7 @@ export interface IUser {
   image?: string;
 }
 
-type SessionType = "email-password" | "google" | "facebook";
+type SessionType = "email-password" | "social";
 
 export interface IUserContextType {
   user: IUser | null;
@@ -62,13 +62,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       //   saveUser(session.user); // Update context with latest user data
       //   return;
       // }
-
+      localStorage.removeItem("user");
       setUser(null);
-    } catch (error) {
+      return logout();
+    } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Hydrate on mount

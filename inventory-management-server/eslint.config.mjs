@@ -15,7 +15,7 @@ export default defineConfig(
   {
     rules: {
       // "no-console": "warn",
-      indent: ["error", 2],
+      // indent: ["error", 2],
     },
   },
 );

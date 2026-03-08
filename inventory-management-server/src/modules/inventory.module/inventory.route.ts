@@ -16,14 +16,5 @@ router.post(
 router.get("/", inventoryController.getInventories);
 router.use("/:inventoryId/items", ItemRoutes);
 router.get("/:inventoryId", inventoryController.getInventoryById);
-router.patch(
-  "/:inventoryId",
-  authMiddleware,
-  validateRequest(updateInventorySchema),
-  inventoryController.updateInventory,
-);
-
-// TODO: Move to separate route file when more tag-related endpoints are added
-router.post("/tags", authMiddleware, inventoryController.createTag);
 
 export const InventoryRoutes = router;

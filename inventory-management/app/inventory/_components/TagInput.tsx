@@ -1,11 +1,11 @@
 "use client";
 
-import { Input } from "@heroui/input";
-import { Chip } from "@heroui/chip";
-import { Spinner } from "@heroui/spinner";
-import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
 import { tagService } from "@/services/tag.service";
+import { useEffect, useState } from "react";
+import { Spinner } from "@heroui/spinner";
+import { Input } from "@heroui/input";
+import { Plus } from "lucide-react";
+import { Chip } from "@heroui/chip";
 
 export interface Tag {
   id: string;
@@ -123,7 +123,7 @@ export default function TagInput({ value, onChange }: TagInputProps) {
                   className="px-4 py-2 hover:bg-default-100 cursor-pointer flex items-center gap-2 text-primary"
                 >
                   <Plus size={16} />
-                  Create "{query}"
+                  Create &quot;{query}&quot;
                 </div>
               )}
             </>

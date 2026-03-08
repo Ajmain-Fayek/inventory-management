@@ -5,7 +5,7 @@ import status from "http-status";
 import { UserService } from "./user.service.js";
 import { AppError } from "@/errorHelper/AppError.js";
 const getUser = catchAsync(async (req: Request, res: Response) => {
-  const { user }: { user: string } = req.query;
+  const { user } = req.query;
 
   console.log(user);
 
@@ -13,7 +13,7 @@ const getUser = catchAsync(async (req: Request, res: Response) => {
     throw new AppError("Query not found", status.BAD_REQUEST);
   }
 
-  const result = await UserService.getUser(user);
+  const result = await UserService.getUser(user as string);
   sendResponse(res, {
     httpStatusCode: status.OK,
     message: "User retrived successfully",

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
-import { Chip } from "@heroui/chip";
 import { User as UserIcon, Book, Building, Laptop } from "lucide-react";
-import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { useLanguage } from "@/context/LanguageContext";
 import { GlobalToolbar } from "@/components/global-toolbar";
+// import { useLanguage } from "@/context/LanguageContext";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Chip } from "@heroui/chip";
+import { useState } from "react";
 
 const myInventories = [
   {
@@ -41,20 +41,23 @@ const writeAccessInventories = [
 ];
 
 export default function ProfilePage() {
-  const { t } = useLanguage();
+  // const { t } = useLanguage();
   const router = useRouter();
 
   const [selectedMyInvKeys, setSelectedMyInvKeys] = useState<Set<string>>(new Set());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAccessInvKeys, setSelectedAccessInvKeys] = useState<Set<string>>(new Set());
 
   const handleRowAction = (key: React.Key) => {
     router.push(`/inventory/${key}`);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleMyInvSelectionChange = (keys: any) => {
     setSelectedMyInvKeys(new Set(Array.from(keys) as string[]));
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAccessInvSelectionChange = (keys: any) => {
     setSelectedAccessInvKeys(new Set(Array.from(keys) as string[]));
   };

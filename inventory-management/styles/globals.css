@@ -7,6 +7,18 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-    --font-sans: "font", sans-serif;
-    --font-mono: "monospace", monospace;
+  --font-sans: "font", sans-serif;
+  --font-mono: "monospace", monospace;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+  /* Hide standard layout elements like Navbar or Footer if they exist */
+  nav,
+  footer,
+  .navbar-container {
+    display: none !important;
+  }
 }

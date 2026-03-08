@@ -177,7 +177,8 @@ model Inventory {
   writeAccesses     WriteAccess[]
   items             Item[]
   inventoryTags     InventoryTag[]
-  customIdTemplates CustomIdTemplate[]
+  customIdTemplates CustomIdTemplate?
+  customIdValues    CustomIdValue[]
 
   @@unique([title])
   @@index([creatorId])
@@ -253,30 +254,30 @@ model Item {
   version       Int     @default(0)
 
   // Single-line text
-  customString1value String?
-  customString2value String?
-  customString3value String?
+  customString1Value String?
+  customString2Value String?
+  customString3Value String?
 
   // Mutli-line text
-  customText1value String?
-  customText2value String?
-  customText3value String?
+  customText1Value String?
+  customText2Value String?
+  customText3Value String?
 
   // Numeric
-  customInt1value Int?
-  customInt2value Int?
-  customInt3value Int?
+  customInt1Value Int?
+  customInt2Value Int?
+  customInt3Value Int?
 
   // Boolean
-  customBool1value Boolean?
-  customBool2value Boolean?
-  customBool3value Boolean?
+  customBool1Value Boolean?
+  customBool2Value Boolean?
+  customBool3Value Boolean?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  customIdValues CustomIdValue[]
+  customIdValues CustomIdValue?
 
   @@index([inventoryId])
   @@map("item")
@@ -288,8 +289,6 @@ model CustomIdTemplate {
   inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
 
   version Int @default(0)
-
-  currentSequence Int?
 
   fixedValueState Boolean @default(false)
   fixedValue      String?
@@ -314,14 +313,15 @@ model CustomIdTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([inventoryId])
+  @@unique([inventoryId])
   @@map("custom_id_template")
 }
 
 model CustomIdValue {
-  id     String @id @default(uuid())
-  itemId String
-  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
 
   version Int @default(0)
 
@@ -333,6 +333,9 @@ model CustomIdValue {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([itemId])
+  @@id([itemId, inventoryId])
+  @@unique([itemId])
+  @@index([inventoryId])
+  @@index([createdAt])
   @@map("custom_id_value")
 }

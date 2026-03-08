@@ -18,7 +18,17 @@ const createInventory = catchAsync(async (req: Request, res: Response) => {
     throw new AppError("Unauthorized", status.UNAUTHORIZED);
   }
 
-  console.log(await req.body);
+  const { title, description, categoryName } = await req.body;
+  
+  console.log(title.trim(), description.trim(), categoryName.trim());
+
+  if (!title.trim() || !description.trim() || !categoryName.trim()) {
+    return sendResponse(res, {
+      httpStatusCode: status.BAD_REQUEST,
+      success: false,
+      message: "Title, Description, Category required!",
+    });
+  }
 
   const result = await InventoryService.createInventory(req.user.id, await req.body);
 
@@ -42,21 +52,6 @@ const getInventoryById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updateInventory = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new AppError("Unauthorized", status.UNAUTHORIZED);
-  }
-
-  const inventoryId = getParam(req.params.inventoryId, "inventoryId");
-  const result = await InventoryService.updateInventory(inventoryId, req.user.id, req.body);
-
-  sendResponse(res, {
-    httpStatusCode: status.OK,
-    success: true,
-    message: "Inventory updated successfully",
-    data: result,
-  });
-});
 
 const getInventories = catchAsync(async (req: Request, res: Response) => {
   const { page, recordLimit } = req.query;
@@ -75,27 +70,9 @@ const getInventories = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// TODO: Move to separate controller and route files when more tag-related endpoints are added
-const createTag = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new AppError("Unauthorized", status.UNAUTHORIZED);
-  }
-
-  const { name } = req.body;
-  const result = await InventoryService.createTag(name);
-
-  sendResponse(res, {
-    httpStatusCode: status.CREATED,
-    success: true,
-    message: "Tag created successfully",
-    data: result,
-  });
-});
-
 export const inventoryController = {
   createInventory,
   getInventoryById,
-  updateInventory,
-  createTag,
+  // updateInventory,
   getInventories,
 };

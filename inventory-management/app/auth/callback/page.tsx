@@ -15,7 +15,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      await refreshSession();
+      await refreshSession("social");
       router.replace("/");
     };
 

@@ -1,21 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { Input } from "@heroui/input";
-import { Button } from "@heroui/button";
-import { Card, CardBody, CardHeader } from "@heroui/card";
-import { Link } from "@heroui/link";
-import { Divider } from "@heroui/divider";
-import { Mail, Lock } from "lucide-react";
-import { motion } from "framer-motion";
 import { useLanguage } from "../../../context/LanguageContext";
-import { FcGoogle } from "react-icons/fc";
-import { FaFacebook } from "react-icons/fa";
 import { authService } from "../../../services/auth.service";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Card, CardBody, CardHeader } from "@heroui/card";
 import { useUser } from "@/context/UserContext";
+import { FaFacebook } from "react-icons/fa";
+import { Mail, Lock } from "lucide-react";
+import { Divider } from "@heroui/divider";
+import { FcGoogle } from "react-icons/fc";
+import { Button } from "@heroui/button";
+import { motion } from "framer-motion";
+import { Input } from "@heroui/input";
+import { Link } from "@heroui/link";
+import { Suspense, useState } from "react";
+import axios from "axios";
 
-export default function LoginPage() {
+export default function LoginPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPage />
+    </Suspense>
+  );
+}
+
+function LoginPage() {
   const { refreshSession } = useUser();
   const { t } = useLanguage();
   const router = useRouter();
@@ -27,7 +36,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  // ── Email / Password ──────────────────────────────────────────────────────
+  // ------------------------------------------------
+  //                  Email-Password
+  // ------------------------------------------------
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,30 +46,34 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Server sets HttpOnly cookies — no token handling needed on the client
       await authService.login({ email, password });
 
-      // Hydrate React state from the new session cookie
       await refreshSession("email-password");
 
-      // Redirect to the page the user originally wanted, or home
       const redirect = searchParams.get("redirect") || "/";
       router.push(redirect);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to login. Please check your credentials.");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to login. Please check your credentials.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── Social ────────────────────────────────────────────────────────────────
+  // ------------------------------------------------
+  //                  Social
+  // ------------------------------------------------
 
   const handleGoogleLogin = async () => {
     setIsSocialLoading("google");
     setError("");
     try {
       await authService.googleLogin();
-      // Browser will redirect to Google — no code runs after this
     } catch {
       setError("Failed to start Google login. Please try again.");
       setIsSocialLoading(null);
@@ -70,7 +85,6 @@ export default function LoginPage() {
     setError("");
     try {
       await authService.facebookLogin();
-      // Browser will redirect to Facebook — no code runs after this
     } catch {
       setError("Failed to start Facebook login. Please try again.");
       setIsSocialLoading(null);
@@ -153,7 +167,7 @@ export default function LoginPage() {
                 className="bg-default-100/50 hover:bg-default-200/50"
                 isLoading={isSocialLoading === "google"}
                 isDisabled={isSocialLoading !== null}
-                onClick={handleGoogleLogin}
+                onPress={handleGoogleLogin}
                 startContent={isSocialLoading !== "google" && <FcGoogle size={18} />}
               >
                 {t("auth.continue_with_google")}
@@ -163,7 +177,7 @@ export default function LoginPage() {
                 className="bg-default-100/50 hover:bg-default-200/50"
                 isLoading={isSocialLoading === "facebook"}
                 isDisabled={isSocialLoading !== null}
-                onClick={handleFacebookLogin}
+                onPress={handleFacebookLogin}
                 startContent={
                   isSocialLoading !== "facebook" && (
                     <FaFacebook size={18} className="text-blue-600" />

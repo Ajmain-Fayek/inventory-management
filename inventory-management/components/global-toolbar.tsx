@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
-import { Button } from "@heroui/button";
 import { PlusIcon, EditIcon, TrashIcon } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { Button } from "@heroui/button";
+import React from "react";
 
 interface GlobalToolbarProps {
   onAdd?: () => void;
@@ -33,12 +33,12 @@ export function GlobalToolbar({
       </div>
       <div className="flex gap-2">
         {onAdd && (
-          <Button color="primary" startContent={<PlusIcon size={16} />} onPress={onAdd}>
+          <Button size="sm" color="primary" startContent={<PlusIcon size={16} />} onPress={onAdd}>
             {t("toolbar.add")}
           </Button>
         )}
         {onEdit && (
-          <Button 
+          <Button size="sm" 
             isDisabled={isEditDisabled} 
             color="secondary" 
             variant="flat" 
@@ -49,7 +49,7 @@ export function GlobalToolbar({
           </Button>
         )}
         {onDelete && (
-          <Button 
+          <Button size="sm" 
             isDisabled={isDeleteDisabled} 
             color="danger" 
             variant="flat" 

@@ -1,17 +1,106 @@
 "use client";
 
-import { Input, Textarea } from "@heroui/input";
-import { Button } from "@heroui/button";
-import { Switch } from "@heroui/switch";
-import { motion } from "framer-motion";
-import { Save, ArrowLeft, Link as LinkIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { getInventoryColumns } from "../../../_helper.ts/getInventoryColumns";
+import { inventoryService } from "@/services/inventory.service";
+import { TCustomValueKey } from "@/app/inventory/_interface";
+import { useInventory } from "@/context/InventoryContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useParams, useRouter } from "next/navigation";
+import { itemService } from "@/services/item.service";
+import ItemSkeleton from "@/components/itemSkeleton";
+import { Input, Textarea } from "@heroui/input";
+import { Save, ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Spinner } from "@heroui/spinner";
+import { Switch } from "@heroui/switch";
+import { Button } from "@heroui/button";
+import { motion } from "framer-motion";
 
-export default function CreateItemPage({ params }: { params: { id: string } }) {
-  console.log(params);
+export default function CreateItemPage() {
+  const params = useParams();
+  const { id } = params;
   const router = useRouter();
   const { t } = useLanguage();
+  const { inventoryColumns, inventory, setInventoryColumns, setInventory, setItems, items } =
+    useInventory();
+  const [loading, setLoading] = useState(true);
+  const [savingInv, setSavingInv] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      setLoading(true);
+
+      const inventoryRes = await inventoryService.getInventoryById(id as string);
+
+      const customCols = await getInventoryColumns(inventoryRes.data);
+
+      setInventoryColumns(customCols);
+      setInventory(inventoryRes.data);
+
+      setLoading(false);
+    };
+
+    if (!inventory) {
+      fetchInventory();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const [formData, setFormData] = useState<Record<TCustomValueKey, string | number | boolean>>(
+    {} as Record<TCustomValueKey, string | number | boolean>,
+  );
+
+  useEffect(() => {
+    if (inventoryColumns.length === 0) return;
+
+    const initialData = inventoryColumns.reduce(
+      (acc, [key, , type]) => {
+        if (type === "Bool") acc[key] = false;
+        else if (type === "Int") acc[key] = 0;
+        else acc[key] = "";
+
+        return acc;
+      },
+      {} as Record<string, string | number | boolean>,
+    );
+
+    setFormData(initialData);
+  }, [inventoryColumns]);
+
+  const handleChange = (key: TCustomValueKey, value: string | number | boolean) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const payload = {
+    ...formData,
+  };
+
+  const handleSubmit = async () => {
+    setSavingInv("saving");
+    setError("");
+
+    const minWait = new Promise((resolve) => setTimeout(resolve, 2500));
+
+    const [response] = await Promise.all([itemService.createItem(payload, id as string), minWait]);
+
+    if (response.success) {
+      setSavingInv("saved");
+      setItems([...items, response.data]);
+      setTimeout(() => {
+        router.push(`/inventory/${id}`);
+      }, 1500);
+    } else {
+      setSavingInv("error");
+      setError(response.message);
+    }
+  };
+
+  if (loading) {
+    return <ItemSkeleton />;
+  }
 
   return (
     <div className="flex flex-col gap-8 py-8 items-center">
@@ -30,31 +119,31 @@ export default function CreateItemPage({ params }: { params: { id: string } }) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <Button color="primary" startContent={<Save size={18} />}>
-            {t("item.create.button")}
+          <Button
+            disabled={savingInv === "saving" || savingInv === "saved"}
+            color="primary"
+            onPress={handleSubmit}
+            startContent={
+              savingInv === "saving" ? <Spinner size="sm" color="white" /> : <Save size={18} />
+            }
+          >
+            {savingInv === "saving"
+              ? `Saving Item`
+              : savingInv === "saved"
+                ? `Item Saved`
+                : "Save Item"}
           </Button>
         </div>
       </motion.div>
+
+      {error && <div className="bg-red-50 text-red-500 rounded-2xl px-4 py-2">{error}</div>}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-8"
+        className="w-full max-w-3xl"
       >
-        {/* Standard Fields */}
-        <div className="flex flex-col gap-6 bg-content1 p-8 rounded-2xl shadow-sm border border-default-200">
-          <h2 className="text-xl font-bold border-b border-default-200 pb-2">Standard Fields</h2>
-
-          <Input
-            label="Custom ID"
-            placeholder="Auto-generated"
-            variant="bordered"
-            description="Leave empty for auto-generation based on sequence rules."
-          />
-          <Input label="Item Name" placeholder="e.g. Dell XPS 13" variant="bordered" isRequired />
-        </div>
-
         {/* Custom Fields defined by Inventory Creator */}
         <div className="flex flex-col gap-6 bg-content1 p-8 rounded-2xl shadow-sm border border-default-200">
           <h2 className="text-xl font-bold border-b border-default-200 pb-2 flex items-center gap-2">
@@ -62,33 +151,59 @@ export default function CreateItemPage({ params }: { params: { id: string } }) {
               Custom Fields
             </span>
           </h2>
-
-          {/* Single-line text */}
-          <Input label="Condition" placeholder="E.g., New, Good, Fair, Poor" variant="bordered" />
-
-          {/* Numeric field */}
-          <Input label="Purchase Year" type="number" placeholder="2024" variant="bordered" />
-
-          {/* Multi-line text field */}
-          <Textarea label="Staff Notes" placeholder="Any additional notes" variant="bordered" />
-
-          {/* Document/Image Link field */}
-          <Input
-            label="Receipt Document"
-            type="url"
-            placeholder="https://..."
-            variant="bordered"
-            startContent={<LinkIcon size={16} className="text-default-400" />}
-          />
-
-          {/* Checkbox / Boolean field */}
-          <div className="flex items-center justify-between p-4 bg-default-50 rounded-lg border border-default-200">
-            <div>
-              <p className="font-semibold text-sm">Requires Maintenance</p>
-              <p className="text-xs text-default-500">Check if item needs repair</p>
-            </div>
-            <Switch defaultSelected={false} color="warning" />
-          </div>
+          {inventoryColumns.length > 0 ? (
+            inventoryColumns.map(([key, label, type]) => {
+              switch (type) {
+                case "String":
+                  return (
+                    <Input
+                      key={key}
+                      label={label}
+                      placeholder={label}
+                      variant="bordered"
+                      value={formData[key] as string}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                    />
+                  );
+                case "Text":
+                  return (
+                    <Textarea
+                      key={key}
+                      label={label}
+                      placeholder={label}
+                      value={formData[key] as string}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                    />
+                  );
+                case "Int":
+                  return (
+                    <Input
+                      key={key}
+                      label={label}
+                      placeholder={label}
+                      variant="bordered"
+                      type="number"
+                      value={String(formData[key] ?? "")}
+                      onChange={(e) => handleChange(key, Number(e.target.value))}
+                    />
+                  );
+                case "Bool":
+                  return (
+                    <div key={key} className="flex items-center gap-2">
+                      <span>{label}</span>
+                      <Switch
+                        checked={formData[key] as boolean}
+                        onValueChange={(val) => handleChange(key, val)}
+                      />
+                    </div>
+                  );
+                default:
+                  return null;
+              }
+            })
+          ) : (
+            <div>No field created during inventory creation. Try updating the inventory.</div>
+          )}
         </div>
       </motion.div>
     </div>

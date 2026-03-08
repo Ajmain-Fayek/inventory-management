@@ -1,24 +1,25 @@
 import { authClient } from "@/lib/auth-client";
 import { axiosInstance } from "@/lib/axios";
 import { envConfig } from "@/config/envConfig";
+import { catchAsync } from "@/lib/catchAsync";
 
 export const authService = {
   // ── Email / Password ──────────────────────────────────────────────────────
 
-  login: async (data: { email: string; password: string }) => {
+  login: catchAsync(async (data: { email: string; password: string }) => {
     const response = await axiosInstance.post("/api/v1/auth/login", data);
     return response.data;
-  },
+  }),
 
-  register: async (data: { name: string; email: string; password: string }) => {
+  register: catchAsync(async (data: { name: string; email: string; password: string }) => {
     const response = await axiosInstance.post("/api/v1/auth/register", data);
     return response.data;
-  },
+  }),
 
-  getCurrentUser: async () => {
+  getCurrentUser: catchAsync(async () => {
     const response = await axiosInstance.get("/api/v1/auth/me");
     return response.data;
-  },
+  }),
 
   // ── Logout ────────────────────────────────────────────────────────────────
 
@@ -26,9 +27,9 @@ export const authService = {
    * Calls the server-side logout endpoint which invalidates the better-auth
    * session and clears all auth cookies (accessToken, refreshToken, session_token).
    */
-  logout: async () => {
+  logout: catchAsync(async () => {
     await axiosInstance.post("/api/v1/auth/logout");
-  },
+  }),
 
   // ── Social Providers ──────────────────────────────────────────────────────
 
@@ -36,29 +37,29 @@ export const authService = {
    * Initiates Google OAuth flow.
    * better-auth will redirect the browser to Google, then back to callbackURL.
    */
-  googleLogin: async () => {
+  googleLogin: catchAsync(async () => {
     await authClient.signIn.social({
       provider: "google",
       callbackURL: `${envConfig.FRONTEND_BASE_URL}/auth/callback`,
     });
-  },
+  }),
 
-  googleLoginSuccess: async (redirectPath?: string) => {
+  googleLoginSuccess: catchAsync(async (redirectPath?: string) => {
     const response = await axiosInstance.get("/api/v1/auth/google/callback", {
       params: { redirect: redirectPath },
     });
     return response.data;
-  },
+  }),
 
   /**
    * Initiates Facebook OAuth flow.
    */
-  facebookLogin: async () => {
+  facebookLogin: catchAsync(async () => {
     await authClient.signIn.social({
       provider: "facebook",
       callbackURL: `${envConfig.FRONTEND_BASE_URL}/auth/callback`,
     });
-  },
+  }),
 
   // ── Session ───────────────────────────────────────────────────────────────
 
@@ -67,8 +68,8 @@ export const authService = {
    * The session cookie is sent automatically (withCredentials).
    * Returns { user, session } or null if not authenticated.
    */
-  getSession: async () => {
+  getSession: catchAsync(async () => {
     const response = await authClient.getSession();
     return response.data ?? null;
-  },
+  }),
 };

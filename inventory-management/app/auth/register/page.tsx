@@ -1,19 +1,20 @@
 "use client";
 
+import axios from "axios";
 import { useState } from "react";
-import { Input } from "@heroui/input";
-import { Button } from "@heroui/button";
-import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Link } from "@heroui/link";
-import { Divider } from "@heroui/divider";
-import { Mail, Lock, User } from "lucide-react";
+import { Input } from "@heroui/input";
 import { motion } from "framer-motion";
-import { useLanguage } from "../../../context/LanguageContext";
+import { Button } from "@heroui/button";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebook } from "react-icons/fa";
-import { authService } from "../../../services/auth.service";
+import { Divider } from "@heroui/divider";
 import { useRouter } from "next/navigation";
+import { FaFacebook } from "react-icons/fa";
 import { useUser } from "@/context/UserContext";
+import { Mail, Lock, User } from "lucide-react";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+import { useLanguage } from "../../../context/LanguageContext";
+import { authService } from "../../../services/auth.service";
 
 export default function RegisterPage() {
   const { t } = useLanguage();
@@ -27,7 +28,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  // ── Email / Password ──────────────────────────────────────────────────────
+  // ------------------------------------------------
+  //                  Email-Password
+  // ------------------------------------------------
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,22 +38,27 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      // Server registers the user AND auto-logs them in (sets session cookies)
       await authService.register({ name, email, password });
 
-      // Hydrate the React session state from the new cookie
-      await refreshSession();
+      await refreshSession("email-password");
 
-      // Redirect to home — user is already authenticated
       router.push("/");
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to register. Please try again.");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to register. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── Social ────────────────────────────────────────────────────────────────
+  // ------------------------------------------------
+  //                  Social
+  // ------------------------------------------------
 
   const handleGoogleLogin = async () => {
     setIsSocialLoading("google");
@@ -147,7 +155,7 @@ export default function RegisterPage() {
                 className="bg-default-100/50 hover:bg-default-200/50 flex-1"
                 isLoading={isSocialLoading === "google"}
                 isDisabled={isSocialLoading !== null}
-                onClick={handleGoogleLogin}
+                onPress={handleGoogleLogin}
               >
                 {isSocialLoading !== "google" && <FcGoogle size={18} />}
               </Button>
@@ -156,7 +164,7 @@ export default function RegisterPage() {
                 className="bg-default-100/50 hover:bg-default-200/50 flex-1"
                 isLoading={isSocialLoading === "facebook"}
                 isDisabled={isSocialLoading !== null}
-                onClick={handleFacebookLogin}
+                onPress={handleFacebookLogin}
               >
                 {isSocialLoading !== "facebook" && (
                   <FaFacebook size={18} className="text-blue-600" />

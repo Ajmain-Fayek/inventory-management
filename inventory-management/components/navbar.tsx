@@ -1,7 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useLanguage } from "../context/LanguageContext";
+import { LanguageSwitch } from "./language-switch";
+import { useUser } from "../context/UserContext";
+import { ThemeSwitch } from "./theme-switch";
+import { siteConfig } from "../config/site";
+import { SearchIcon, Logo } from "./icons";
+import { Input } from "@heroui/input";
+import { Link } from "@heroui/link";
+import { useState } from "react";
+import NextLink from "next/link";
+import clsx from "clsx";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -11,20 +21,6 @@ import {
   NavbarItem,
   NavbarMenuItem,
 } from "@heroui/navbar";
-import { CircleUserRound } from "lucide-react";
-import { Link } from "@heroui/link";
-import { Input } from "@heroui/input";
-import { Button } from "@heroui/button";
-import { link as linkStyles } from "@heroui/theme";
-import NextLink from "next/link";
-import clsx from "clsx";
-
-import { siteConfig } from "../config/site";
-import { ThemeSwitch } from "./theme-switch";
-import { LanguageSwitch } from "./language-switch";
-import { useLanguage } from "../context/LanguageContext";
-import { SearchIcon, Logo } from "./icons";
-import { useUser } from "../context/UserContext";
 
 export const Navbar = () => {
   const { user, logout } = useUser();
@@ -84,7 +80,7 @@ export const Navbar = () => {
           </NextLink>
         </NavbarBrand>
         <ul className="hidden lg:flex gap-4 justify-start ml-2">
-          {filteredNavItems.map((item, index) => (
+          {filteredNavItems.map((item) => (
             <NavbarItem key={item.href}>
               <Link
                 color="foreground"

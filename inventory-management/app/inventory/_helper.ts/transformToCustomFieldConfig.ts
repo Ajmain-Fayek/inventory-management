@@ -1,48 +1,37 @@
-type FieldType = "text" | "textarea" | "integer" | "boolean";
+// REMEMBER: Ready payload for saving iventory
 
-interface CustomField {
-  id: string;
-  type: FieldType;
-  name: string;
-  showInTable: boolean;
-}
+import { ICustomField, TCustomFieldType, CUSTOM_FIELD_CONFIG } from "../_interface";
 
-type FieldsInput = Record<FieldType, CustomField[]>;
+type FieldsInput = Record<TCustomFieldType, ICustomField[]>;
 
 interface CustomFieldConfig {
-  [key: string]: boolean | string;
+  [key: string]: boolean | string | null;
 }
 
 export function transformToCustomFieldConfig(fields: FieldsInput): CustomFieldConfig {
   const result: CustomFieldConfig = {};
 
-  const typeMapping: Record<FieldType, { prefix: string; max: number }> = {
-    text: { prefix: "customString", max: 3 },
-    textarea: { prefix: "customText", max: 3 },
-    integer: { prefix: "customInt", max: 3 },
-    boolean: { prefix: "customBool", max: 3 },
-  };
-
-  (Object.keys(typeMapping) as FieldType[]).forEach((type) => {
-    const { prefix, max } = typeMapping[type];
-    const typeFields = fields[type] || [];
+  CUSTOM_FIELD_CONFIG.forEach(({ type, prefix }) => {
+    const typeFields = fields[type as TCustomFieldType] || [];
+    const max = 3;
 
     for (let i = 0; i < max; i++) {
       const field = typeFields[i];
       const index = i + 1;
 
       const stateKey = `${prefix}${index}State`;
+      const showInTableKey = `${prefix}${index}ShowInTable`;
+      const valueKey = `${prefix}${index}Value`;
 
       if (!field) {
-        // Only State when field does not exist
         result[stateKey] = false;
-        continue;
+        result[showInTableKey] = null;
+        result[valueKey] = null;
+      } else {
+        result[stateKey] = true;
+        result[showInTableKey] = field.showInTable ?? false;
+        result[valueKey] = field.name || "";
       }
-
-      // If field exists
-      result[stateKey] = true;
-      result[`${prefix}${index}ShowInTable`] = field.showInTable;
-      result[`${prefix}${index}Value`] = field.name;
     }
   });
 

@@ -1,31 +1,27 @@
+import { IInventory } from "@/app/inventory/_interface";
 import { axiosInstance } from "@/lib/axios";
+import { catchAsync } from "@/lib/catchAsync";
 
 export const inventoryService = {
-  createInventory: async (payload: any) => {
+  createInventory: catchAsync(async (payload: Partial<IInventory>) => {
     const response = await axiosInstance.post("/api/v1/inventories", payload);
     return response.data;
-  },
+  }),
 
-  getInventories: async (page: number, recordLimit: number) => {
+  getInventories: catchAsync(async (page: number, recordLimit: number) => {
     const response = await axiosInstance.get(
       `/api/v1/inventories?page=${page}&recordLimit=${recordLimit}`,
     );
     return response.data;
-  },
-  getInventoryById: async (inventoryId: string) => {
+  }),
+
+  getInventoryById: catchAsync(async (inventoryId: string) => {
     const response = await axiosInstance.get(`/api/v1/inventories/${inventoryId}`);
     return response.data;
-  },
+  }),
 
-  getInvItems: async (inventoryId: string, page: number, recordLimit: number) => {
-    const response = await axiosInstance.get(
-      `/api/v1/inventories/${inventoryId}/items?page=${page}&recordLimit=${recordLimit}`,
-    );
+  updateInventory: catchAsync(async (inventoryId: string, payload: Partial<IInventory>) => {
+    const response = await axiosInstance.patch(`/api/v1/inventories/${inventoryId}`, payload);
     return response.data;
-  },
-
-  // addItem: async (data: { name: string; quantity: number }) => {
-  //   const response = await axiosInstance.post("/api/v1/inventory/items", data);
-  //   return response.data;
-  // },
+  }),
 };

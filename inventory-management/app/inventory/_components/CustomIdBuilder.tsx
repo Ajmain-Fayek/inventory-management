@@ -1,6 +1,11 @@
 "use client";
 
+import { GripVertical, Plus, AlertTriangle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Select, SelectItem } from "@heroui/select";
+import { CSS } from "@dnd-kit/utilities";
+import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
 import {
   DndContext,
   closestCenter,
@@ -18,64 +23,26 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Button } from "@heroui/button";
-import { Select, SelectItem } from "@heroui/select";
-import { Input } from "@heroui/input";
-import { GripVertical, Plus, AlertTriangle } from "lucide-react";
-
-/* ================= TYPES ================= */
-
-type SegmentType = "fixed" | "random" | "sequence" | "datetime";
-const UNIQUE_TYPES: SegmentType[] = ["random", "sequence", "datetime"];
-type RandomMode = "20bit" | "32bit" | "6digit" | "9digit";
-type DateFormat = "yyyy" | "yy" | "yyyyMM" | "yyyyMMdd" | "yyyyMMddHHmm";
-type Separator = "_" | "-";
-
-export interface Segment {
-  id: string;
-  type: SegmentType;
-  value?: string;
-  randomMode?: RandomMode;
-  dateFormat?: DateFormat;
-  sequenceFormat?: string;
-  separator?: Separator;
-}
-
-export interface CustomIdValues {
-  currentSequence?: number | null;
-
-  fixedValueState: boolean;
-  fixedValue?: string | null;
-  fixedPosition?: number | null;
-  fixedSeparator?: string | null;
-
-  sequenceValueState: boolean;
-  sequenceValue?: string | null;
-  sequenceValuePosition?: number | null;
-  sequenceSeparator?: string | null;
-
-  randomValueState: boolean;
-  randomValue?: string | null;
-  randomValuePosition?: number | null;
-  randomSeparator?: string | null;
-
-  datetimeValueState: boolean;
-  datetimeValue?: string | null;
-  datetimeValuePosition?: number | null;
-  datetimeSeparator?: string | null;
-}
+import {
+  ICustomIdTemplateValues,
+  ISegment,
+  TDateFormat,
+  TRandomMode,
+  TSegmentType,
+  TSeparator,
+  UNIQUE_TYPES,
+} from "../_interface";
 
 interface CustomIdBuilderProps {
   /** Controlled segment list — lives in the parent to survive tab switches */
-  items: Segment[];
-  onItemsChange: (items: Segment[]) => void;
-  onChange?: (values: CustomIdValues) => void;
+  items: ISegment[];
+  onItemsChange: (items: ISegment[]) => void;
+  onChange?: (values: ICustomIdTemplateValues) => void;
 }
 
 /* ========= GENERATORS ========= */
 
-function generateRandom(mode: RandomMode = "20bit"): string {
+function generateRandom(mode: TRandomMode = "20bit"): string {
   switch (mode) {
     case "20bit":
       return Math.floor(Math.random() * (1 << 20))
@@ -90,7 +57,7 @@ function generateRandom(mode: RandomMode = "20bit"): string {
   }
 }
 
-function formatDate(format: DateFormat = "yyyy"): string {
+function formatDate(format: TDateFormat = "yyyy"): string {
   const now = new Date();
   const yyyy = now.getFullYear();
   const yy = String(yyyy).slice(-2);
@@ -147,10 +114,7 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
 
   /* ========= DERIVED DATA ========= */
 
-  // const existingTypes = useMemo(() => new Set(items.map((i) => i.type)), [items]);
-
-  const isUniqueType = (type: SegmentType, excludeId?: string): boolean => {
-    // if (type === "fixed") return true;
+  const isUniqueType = (type: TSegmentType, excludeId?: string): boolean => {
     return !items.some((item) => item.type === type && item.id !== excludeId);
   };
 
@@ -210,7 +174,7 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
 
   /* ========= HELPERS ========= */
 
-  const updateSegment = (id: string, updates: Partial<Segment>) => {
+  const updateSegment = (id: string, updates: Partial<ISegment>) => {
     onItemsChange(items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
   };
 
@@ -222,9 +186,9 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
     if (items.length >= MAX_ITEMS) return;
 
     const unusedUniqueType = UNIQUE_TYPES.find((type) => !items.some((item) => item.type === type));
-    const selectedType: SegmentType = unusedUniqueType ?? "fixed";
+    const selectedType: TSegmentType = unusedUniqueType ?? "fixed";
 
-    const newSeg: Segment = {
+    const newSeg: ISegment = {
       id: crypto.randomUUID(),
       type: selectedType,
       separator: "_",
@@ -237,7 +201,7 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
     setDuplicateWarning(null);
   };
 
-  const handleTypeChange = (id: string, newType: SegmentType) => {
+  const handleTypeChange = (id: string, newType: TSegmentType) => {
     if (newType !== "fixed" && !isUniqueType(newType, id)) {
       setDuplicateWarning(
         `"${newType.charAt(0).toUpperCase() + newType.slice(1)}" type is already added. Each type (except Fixed) can only be used once.`,
@@ -246,7 +210,7 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
     }
     setDuplicateWarning(null);
     // Write explicit defaults so HeroUI Select always has a concrete selectedKey
-    const defaults: Partial<Segment> =
+    const defaults: Partial<ISegment> =
       newType === "random"
         ? { type: newType, randomMode: "20bit" }
         : newType === "datetime"
@@ -293,11 +257,7 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
     const randomItem = items.find((i) => i.type === "random");
     const datetimeItem = items.find((i) => i.type === "datetime");
 
-    const values: CustomIdValues = {
-      currentSequence: sequenceItem
-        ? parseInt(generateSequence(sequenceItem.sequenceFormat))
-        : null,
-
+    const values: ICustomIdTemplateValues = {
       fixedValueState: !!fixedItem,
       fixedValue: fixedItem?.value ?? null,
       fixedPosition: fixedItem ? items.indexOf(fixedItem) : null,
@@ -428,12 +388,12 @@ export default function CustomIdBuilder({ items, onItemsChange, onChange }: Cust
 /* ================= SORTABLE ITEM ================= */
 
 interface SortableItemProps {
-  item: Segment;
+  item: ISegment;
   index: number;
-  updateSegment: (id: string, updates: Partial<Segment>) => void;
-  onTypeChange: (id: string, type: SegmentType) => void;
+  updateSegment: (id: string, updates: Partial<ISegment>) => void;
+  onTypeChange: (id: string, type: TSegmentType) => void;
   onRemove: (id: string) => void;
-  isUniqueType: (type: SegmentType, excludeId?: string) => boolean;
+  isUniqueType: (type: TSegmentType, excludeId?: string) => boolean;
 }
 
 function SortableItem({
@@ -473,7 +433,7 @@ function SortableItem({
       <Select
         selectedKeys={[item.type]}
         onSelectionChange={(keys) => {
-          const newType = Array.from(keys)[0] as SegmentType;
+          const newType = Array.from(keys)[0] as TSegmentType;
           if (newType) onTypeChange(item.id, newType);
         }}
         className="w-40 shrink-0"
@@ -557,7 +517,7 @@ function SortableItem({
           selectedKeys={[item.randomMode ?? "20bit"]}
           onSelectionChange={(keys) =>
             updateSegment(item.id, {
-              randomMode: Array.from(keys)[0] as RandomMode,
+              randomMode: Array.from(keys)[0] as TRandomMode,
             })
           }
           value={item.randomMode}
@@ -577,7 +537,7 @@ function SortableItem({
           selectedKeys={[item.dateFormat ?? "yyyy"]}
           onSelectionChange={(keys) =>
             updateSegment(item.id, {
-              dateFormat: Array.from(keys)[0] as DateFormat,
+              dateFormat: Array.from(keys)[0] as TDateFormat,
             })
           }
           value={item.dateFormat}
@@ -608,7 +568,7 @@ function SortableItem({
         selectedKeys={[item.separator ?? "_"]}
         onSelectionChange={(keys) =>
           updateSegment(item.id, {
-            separator: Array.from(keys)[0] as Separator,
+            separator: Array.from(keys)[0] as TSeparator,
           })
         }
         className="w-24 shrink-0"

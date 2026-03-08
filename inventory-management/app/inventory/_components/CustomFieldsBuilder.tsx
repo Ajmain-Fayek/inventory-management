@@ -1,39 +1,17 @@
 "use client";
 
+import { AlignLeft, AlignJustify, Hash, ToggleLeft, Plus, Trash2 } from "lucide-react";
+import { ICustomField, ICustomFieldsState, TCustomFieldType } from "../_interface";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
-import { AlignLeft, AlignJustify, Hash, ToggleLeft, Plus, Trash2 } from "lucide-react";
 import { Switch } from "@heroui/switch";
 
 /* ================= TYPES ================= */
 
-export type FieldType = "text" | "textarea" | "integer" | "boolean";
-
-export interface CustomField {
-  id: string;
-  type: FieldType;
-  name: string;
-  showInTable: boolean;
-}
-
-export interface CustomFieldsState {
-  text: CustomField[];
-  textarea: CustomField[];
-  integer: CustomField[];
-  boolean: CustomField[];
-}
-
-export const EMPTY_CUSTOM_FIELDS: CustomFieldsState = {
-  text: [],
-  textarea: [],
-  integer: [],
-  boolean: [],
-};
-
 interface CustomFieldsBuilderProps {
-  fields: CustomFieldsState;
-  onFieldsChange: (fields: CustomFieldsState) => void;
+  fields: ICustomFieldsState;
+  onFieldsChange: (fields: ICustomFieldsState) => void;
 }
 
 /* ================= CONFIG ================= */
@@ -41,7 +19,7 @@ interface CustomFieldsBuilderProps {
 const MAX_PER_TYPE = 3;
 
 const TYPE_CONFIG: {
-  key: FieldType;
+  key: TCustomFieldType;
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -49,7 +27,7 @@ const TYPE_CONFIG: {
   badgeColor: "primary" | "success" | "warning" | "secondary";
 }[] = [
   {
-    key: "text",
+    key: "String",
     label: "Single-line Text",
     description: "Short values like names, codes, or labels",
     icon: <AlignLeft size={16} />,
@@ -57,7 +35,7 @@ const TYPE_CONFIG: {
     badgeColor: "primary",
   },
   {
-    key: "textarea",
+    key: "Text",
     label: "Multi-line Text",
     description: "Longer descriptions or notes",
     icon: <AlignJustify size={16} />,
@@ -65,7 +43,7 @@ const TYPE_CONFIG: {
     badgeColor: "secondary",
   },
   {
-    key: "integer",
+    key: "Int",
     label: "Integer",
     description: "Numeric values like quantity or rating",
     icon: <Hash size={16} />,
@@ -73,7 +51,7 @@ const TYPE_CONFIG: {
     badgeColor: "warning",
   },
   {
-    key: "boolean",
+    key: "Bool",
     label: "Boolean (Yes / No)",
     description: "Toggle fields like active, available, etc.",
     icon: <ToggleLeft size={16} />,
@@ -85,10 +63,10 @@ const TYPE_CONFIG: {
 /* ================= COMPONENT ================= */
 
 export default function CustomFieldsBuilder({ fields, onFieldsChange }: CustomFieldsBuilderProps) {
-  const addField = (type: FieldType) => {
+  const addField = (type: TCustomFieldType) => {
     const current = fields[type];
     if (current.length >= MAX_PER_TYPE) return;
-    const newField: CustomField = {
+    const newField: ICustomField = {
       id: crypto.randomUUID(),
       type,
       name: "",
@@ -97,14 +75,14 @@ export default function CustomFieldsBuilder({ fields, onFieldsChange }: CustomFi
     onFieldsChange({ ...fields, [type]: [...current, newField] });
   };
 
-  const updateField = (type: FieldType, id: string, name: string, showInTable: boolean) => {
+  const updateField = (type: TCustomFieldType, id: string, name: string, showInTable: boolean) => {
     onFieldsChange({
       ...fields,
       [type]: fields[type].map((f) => (f.id === id ? { ...f, name, showInTable } : f)),
     });
   };
 
-  const removeField = (type: FieldType, id: string) => {
+  const removeField = (type: TCustomFieldType, id: string) => {
     onFieldsChange({
       ...fields,
       [type]: fields[type].filter((f) => f.id !== id),
@@ -211,9 +189,9 @@ export default function CustomFieldsBuilder({ fields, onFieldsChange }: CustomFi
 
 /* ================= PLACEHOLDER HINTS ================= */
 
-const PLACEHOLDER_EXAMPLES: Record<FieldType, [string, string, string]> = {
-  text: ["Condition", "Brand", "Serial No."],
-  textarea: ["Notes", "Description", "Remarks"],
-  integer: ["Quantity", "Rating", "Shelf No."],
-  boolean: ["Available", "Verified", "In Warranty"],
+const PLACEHOLDER_EXAMPLES: Record<TCustomFieldType, [string, string, string]> = {
+  String: ["Condition", "Brand", "Serial No."],
+  Text: ["Notes", "Description", "Remarks"],
+  Int: ["Quantity", "Rating", "Shelf No."],
+  Bool: ["Available", "Verified", "In Warranty"],
 };

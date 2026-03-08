@@ -18,6 +18,10 @@ export const siteConfig = {
       href: "/inventory/create",
     },
     {
+      label: "Profile",
+      href: "/profile",
+    },
+    {
       label: "Logout",
       href: "/logout",
     },

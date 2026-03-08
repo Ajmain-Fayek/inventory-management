@@ -1,34 +1,31 @@
 "use client";
 
-import CustomIdBuilder, { CustomIdValues, Segment } from "../_components/CustomIdBuilder";
+import { Save, ArrowLeft, Settings, CheckCircle, Database, Users, BarChart3 } from "lucide-react";
+import { transformToCustomFieldConfig } from "../_helper.ts/transformToCustomFieldConfig";
+import CreateInventorySkeleton from "@/components/createInventorySkeleton";
+import CustomFieldsBuilder from "../_components/CustomFieldsBuilder";
 import { inventoryService } from "@/services/inventory.service";
 import { categoryService } from "@/services/category.service";
-import UserInput, { User } from "../_components/UserInput";
+import CustomIdBuilder from "../_components/CustomIdBuilder";
 import { useLanguage } from "@/context/LanguageContext";
 import TagInput, { Tag } from "../_components/TagInput";
 import { Select, SelectItem } from "@heroui/select";
+import UserInput from "../_components/UserInput";
 import { Input, Textarea } from "@heroui/input";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Spinner } from "@heroui/spinner";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Button } from "@heroui/button";
 import { Switch } from "@heroui/switch";
 import { motion } from "framer-motion";
 import {
-  Save,
-  ArrowLeft,
-  Image as ImageIcon,
-  Settings,
-  CheckCircle,
-  Database,
-  Users,
-  BarChart3,
-} from "lucide-react";
-import CustomFieldsBuilder, {
-  CustomFieldsState,
+  IWriteAccess,
+  ICustomFieldsState,
   EMPTY_CUSTOM_FIELDS,
-} from "../_components/CustomFieldsBuilder";
-import { transformToCustomFieldConfig } from "../_helper.ts/transformToCustomFieldConfig";
+  ISegment,
+  ICustomIdTemplateValues,
+} from "../_interface";
 
 // -------------------------------------------------------
 // Component Function Start
@@ -37,20 +34,22 @@ export default function CreateInventoryPage() {
   const { t } = useLanguage();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [savingInv, setSavingInv] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState("");
 
   // General Settings Tab States
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [category, setCategory] = useState<string>("");
   const [tags, setTags] = useState<Tag[]>([]);
+  const [imageUrl, setImageUrl] = useState<string>("");
   // store all categories for Selection
   const [categories, setCategories] = useState<{ id: string; name: string }[] | undefined>(
     undefined,
   );
 
   // Custom ID Tab states
-  const [customIdValues, setCustomIdValues] = useState<CustomIdValues>({
-    currentSequence: 1,
+  const [customIdValues, setCustomIdValues] = useState<ICustomIdTemplateValues>({
     fixedValueState: true,
     fixedValue: "📚",
     fixedPosition: 0,
@@ -69,8 +68,7 @@ export default function CreateInventoryPage() {
     datetimeSeparator: "_",
   });
 
-  // console.log(customIdValues);
-  const [customIdItems, setCustomIdItems] = useState<Segment[]>([
+  const [customIdItems, setCustomIdItems] = useState<ISegment[]>([
     { id: crypto.randomUUID(), type: "fixed", value: "📚", separator: "_" },
     { id: crypto.randomUUID(), type: "random", randomMode: "20bit", separator: "_" },
     { id: crypto.randomUUID(), type: "sequence", sequenceFormat: "D", separator: "_" },
@@ -78,10 +76,10 @@ export default function CreateInventoryPage() {
   ]);
 
   // Custom Fields Tab States
-  const [customFields, setCustomFields] = useState<CustomFieldsState>(EMPTY_CUSTOM_FIELDS);
+  const [customFields, setCustomFields] = useState<ICustomFieldsState>(EMPTY_CUSTOM_FIELDS);
 
   // Access Tab States
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<IWriteAccess[]>([]);
   const [isInvPublic, setIsInvPublic] = useState<boolean>(false);
 
   // Load Categories for selection
@@ -102,6 +100,7 @@ export default function CreateInventoryPage() {
   const payload = {
     title,
     description,
+    imageUrl,
     categoryName: category,
     tags: tags.map((t) => t.name),
     idTemplate: {
@@ -109,15 +108,34 @@ export default function CreateInventoryPage() {
     },
     customFieldConfig: transformToCustomFieldConfig(customFields),
     isPublic: isInvPublic,
-    writeAccess: users.map((u) => u.id),
+    writeAccess: users,
   };
 
   const handleSaveInventory = async () => {
-    const response = await inventoryService.createInventory(payload);
-    console.log(response);
+    setSavingInv("saving");
+    setError("");
+
+    const minWait = new Promise((resolve) => setTimeout(resolve, 2500));
+
+    const [response] = await Promise.all([inventoryService.createInventory(payload), minWait]);
+
+    if (response.success) {
+      setSavingInv("saved");
+
+      setTimeout(() => {
+        router.push(`/inventory/${response.data.id}`);
+      }, 1500);
+    } else {
+      setSavingInv("error");
+      setError(response.message);
+    }
   };
 
   // console.log(users);
+
+  if (loading) {
+    return <CreateInventorySkeleton />;
+  }
 
   return (
     <div className="flex flex-col gap-8 py-8 px-4 max-w-4xl mx-auto">
@@ -136,10 +154,22 @@ export default function CreateInventoryPage() {
           </div>
         </div>
 
-        <Button color="primary" onPress={handleSaveInventory} startContent={<Save size={18} />}>
-          {t("inventory.create.button")}
+        <Button
+          color="primary"
+          onPress={handleSaveInventory}
+          startContent={
+            savingInv === "saving" ? <Spinner size="sm" color="white" /> : <Save size={18} />
+          }
+        >
+          {savingInv === "saving"
+            ? `Saving Inventory`
+            : savingInv === "saved"
+              ? `Inventory Saved`
+              : "Save Inventory"}
         </Button>
       </motion.div>
+
+      {error && <div className="bg-red-50 text-red-500 rounded-2xl px-4 py-2">{error}</div>}
 
       <Tabs aria-label="Inventory Options" color="primary" variant="underlined">
         {/* GENERAL SETTINGS TAB */}
@@ -181,19 +211,25 @@ export default function CreateInventoryPage() {
                 <SelectItem isReadOnly={true} key="">
                   {t("inventory.create.generalSettings.category.placeholder")}
                 </SelectItem>
-                {loading ? (
-                  <SelectItem key="00">Loading...</SelectItem>
-                ) : (
-                  (categories ?? []).map((c) => (
+                <>
+                  {(categories ?? []).map((c) => (
                     <SelectItem key={c.name}>
                       {c.name
                         .split(" ")
                         .map((a) => a[0].toUpperCase() + a.slice(1, a.length))
                         .join(" ")}
                     </SelectItem>
-                  ))
-                )}
+                  ))}
+                </>
               </Select>
+              <Input
+                label={t("inventory.create.generalSettings.imageUrl")}
+                placeholder={t("inventory.create.generalSettings.imageUrl.placeholder")}
+                variant="bordered"
+                className="w-full"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+              />
               <TagInput value={tags} onChange={setTags} />
             </div>
           </div>

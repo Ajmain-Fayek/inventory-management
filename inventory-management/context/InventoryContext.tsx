@@ -1,6 +1,6 @@
 "use client";
 
-import { IInventory } from "@/app/inventory/_interface";
+import { TCustomValueKeyPair, IInventory, IItem } from "@/app/inventory/_interface";
 import { createContext, ReactNode, useContext, useState } from "react";
 
 interface IInventoryContextType {
@@ -16,10 +16,10 @@ interface IInventoryContextType {
   setTotalInventories: (i: number) => void;
   inventory: IInventory | null;
   setInventory: (inv: IInventory) => void;
-  inventoryColumns: string[];
-  setInventoryColumns: (inventoryColumns: string[]) => void;
-  items: string[];
-  setItems: (itm: string[]) => void;
+  inventoryColumns: TCustomValueKeyPair[];
+  setInventoryColumns: (inventoryColumns: TCustomValueKeyPair[]) => void;
+  items: IItem[];
+  setItems: (itm: IItem[]) => void;
   itemPage: number;
   itemTotalPages: number;
   setItemTotalPages: (i: number) => void;
@@ -37,16 +37,16 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   const [allInventories, setAllInventoris] = useState<IInventory[]>([]);
   const [invPage, setInvPage] = useState<number>(1);
   const [invTotalPages, setInvTotalPages] = useState<number>(1);
-  const [invRecordLimit, setInvRecordLimit] = useState<number>(25);
+  const [invRecordLimit, setInvRecordLimit] = useState<number>(15);
   const [totalInventories, setTotalInventories] = useState<number>(0);
 
   // [id] Inventory
   const [inventory, setInventory] = useState<IInventory | null>(null);
-  const [inventoryColumns, setInventoryColumns] = useState<string[]>([]);
-  const [items, setItems] = useState<string[]>([]);
+  const [inventoryColumns, setInventoryColumns] = useState<TCustomValueKeyPair[]>([]);
+  const [items, setItems] = useState<IItem[]>([]);
   const [itemPage, setItemPage] = useState<number>(1);
   const [itemTotalPages, setItemTotalPages] = useState<number>(1);
-  const [itemRecordLimit, setItemRecordLimit] = useState<number>(25);
+  const [itemRecordLimit, setItemRecordLimit] = useState<number>(15);
   const [totalItems, setTotalItems] = useState<number>(0);
 
   return (
