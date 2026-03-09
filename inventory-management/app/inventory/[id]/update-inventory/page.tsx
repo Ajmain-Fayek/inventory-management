@@ -30,6 +30,7 @@ import {
   ISegment,
   TSaveStatus,
 } from "../../_interface";
+import { envConfig } from "@/config/envConfig";
 
 // -------------------------------------------------------
 // Component
@@ -85,7 +86,7 @@ export default function UpdateInventoryPage() {
     [title, description, imageUrl, category, tags, customIdItems, customFields, isInvPublic, users],
   );
 
-  console.log(buildPayload());
+  // console.log(buildPayload());
 
   const getSnapshot = useCallback(() => JSON.stringify(buildPayload()), [buildPayload]);
 
@@ -114,6 +115,7 @@ export default function UpdateInventoryPage() {
 
     if (response.success) {
       lastSavedSnapshot.current = getSnapshot();
+      console.log(response.data);
       setSaveStatus("saved");
       // Reset to idle after 4 s
       setTimeout(() => setSaveStatus("idle"), 4000);
@@ -246,6 +248,29 @@ export default function UpdateInventoryPage() {
   }, []);
 
   const currentStatus = getStatusConfig(saveStatus, countdown);
+
+  // -----------------------------
+  // Optimistic Locking
+  // -----------------------------
+  useEffect(() => {
+    inventoryService.lockInventory(id);
+
+    return () => {
+      inventoryService.releaseInventory(id);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    const handleExit = () => {
+      navigator.sendBeacon(`${envConfig.BACKEND_BASE_URL}/api/v1/inventory/${id}/release`);
+    };
+
+    window.addEventListener("beforeunload", handleExit);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleExit);
+    };
+  }, [id]);
 
   if (loading) return <CreateInventorySkeleton />;
 

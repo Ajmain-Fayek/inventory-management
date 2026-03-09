@@ -2,7 +2,7 @@ import { Prisma } from "@/generated/prisma/client.js";
 import { AppError } from "@/errorHelper/AppError.js";
 import { prisma } from "@/lib/prisma.js";
 import status from "http-status";
-import { TCreateInventoryPayload } from "./inventory.validation.js";
+import { TCreateInventoryPayload, TWriteAccess } from "./inventory.validation.js";
 import {
   normalizeCustomFieldConfig,
   normalizeIdTemplate,
@@ -191,7 +191,7 @@ const getInventoryById = async (inventoryId: string) => {
 const getInventories = async (options?: { page?: number; recordLimit?: number }) => {
   const page = options?.page && options.page > 0 ? options.page : 1;
   const recordLimit = options?.recordLimit && options.recordLimit > 0 ? options.recordLimit : 15;
-  const limit = Math.min(recordLimit, 50); // safety for limit injection
+  const limit = Math.min(recordLimit, 50);
 
   const skip = (page - 1) * limit;
 
@@ -230,8 +230,120 @@ const getInventories = async (options?: { page?: number; recordLimit?: number })
   };
 };
 
+const updateInventory = async (
+  inventoryId: string,
+  //@ts-expect-error
+  inventoryPayload,
+  //@ts-expect-error
+  customIdTemplates,
+  tags: string[],
+  writeAccess: TWriteAccess[],
+) => {
+  await prisma.$transaction(async (tx) => {
+    await tx.inventory.update({
+      where: {
+        id: inventoryId,
+      },
+      data: {
+        ...inventoryPayload,
+      },
+    });
+
+    await tx.customIdTemplate.upsert({
+      where: {
+        inventoryId,
+      },
+      update: {
+        ...customIdTemplates,
+      },
+      create: {
+        inventoryId,
+        ...customIdTemplates,
+      },
+    });
+
+    // update tags
+    const existingTags = await tx.inventoryTag.findMany({
+      where: {
+        inventoryId,
+      },
+      select: {
+        tagName: true,
+      },
+    });
+
+    const existingTagNames = existingTags.map((t) => t.tagName);
+
+    const tagsToCreate = tags.filter((t) => !existingTagNames.includes(t));
+    const tagsToDelete = existingTagNames.filter((t) => !tags.includes(t));
+
+    await tx.inventoryTag.deleteMany({
+      where: {
+        inventoryId,
+        tagName: { in: tagsToDelete },
+      },
+    });
+
+    await tx.inventoryTag.createMany({
+      data: tagsToCreate.map((tagName) => ({ inventoryId, tagName })),
+    });
+
+    // update write access
+    const existingWriteAccess = await tx.writeAccess.findMany({
+      where: { inventoryId },
+      select: { userId: true },
+    });
+
+    const existingUsers = existingWriteAccess.map((u) => u.userId);
+    const requestedUsers = writeAccess.map((u) => u.id);
+
+    const usersToCreate = requestedUsers.filter((u) => !existingUsers.includes(u));
+    const usersToDelete = existingUsers.filter((u) => !requestedUsers.includes(u));
+
+    await tx.writeAccess.deleteMany({
+      where: {
+        inventoryId,
+        userId: { in: usersToDelete },
+      },
+    });
+
+    await tx.writeAccess.createMany({
+      data: usersToCreate.map((userId) => ({ inventoryId, userId })),
+    });
+  });
+
+  return;
+};
+
+const lockInventory = async (inventoryId: string, userId: string) => {
+  await prisma.inventory.update({
+    where: { id: inventoryId },
+    data: {
+      isInEditMode: true,
+      editingUserId: userId,
+    },
+  });
+
+  return;
+};
+
+const releaseInventory = async (inventoryId: string) => {
+  await prisma.inventory.update({
+    where: { id: inventoryId },
+    data: {
+      isInEditMode: false,
+      editingUserId: null,
+    },
+  });
+
+  return;
+};
+
 export const InventoryService = {
   createInventory,
   getInventoryById,
   getInventories,
+  updateInventory,
+  lockInventory,
+  releaseInventory,
 };

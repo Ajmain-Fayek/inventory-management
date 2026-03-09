@@ -5,7 +5,7 @@ import { catchAsync } from "@/shared/catchAsync.js";
 import { sendResponse } from "@/shared/sendResponse.js";
 import { InventoryService } from "./inventory.service.js";
 
-const getParam = (value: string | string[] | undefined, key: string) => {
+export const getParam = (value: string | string[] | undefined, key: string) => {
   if (typeof value !== "string" || value.length === 0) {
     throw new AppError(`Missing route parameter: ${key}`, status.BAD_REQUEST);
   }
@@ -19,7 +19,7 @@ const createInventory = catchAsync(async (req: Request, res: Response) => {
   }
 
   const { title, description, categoryName } = await req.body;
-  
+
   console.log(title.trim(), description.trim(), categoryName.trim());
 
   if (!title.trim() || !description.trim() || !categoryName.trim()) {
@@ -52,7 +52,6 @@ const getInventoryById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const getInventories = catchAsync(async (req: Request, res: Response) => {
   const { page, recordLimit } = req.query;
   const options: { page: number; recordLimit: number } = {
@@ -70,9 +69,61 @@ const getInventories = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateInventory = catchAsync(async (req: Request, res: Response) => {
+  const inventoryId = getParam(req.params.inventoryId, "inventoryId");
+
+  const { customFieldConfig, customIdTemplates, tags, writeAccess, ...rest } = await req.body;
+
+  const inventoryPayload = {
+    ...customFieldConfig,
+    ...rest,
+  };
+
+  await InventoryService.updateInventory(
+    inventoryId as string,
+    inventoryPayload,
+    customIdTemplates,
+    tags,
+    writeAccess,
+  );
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    message: "Inventory Updated successfully.",
+    success: true,
+  });
+});
+
+const lockInventory = catchAsync(async (req: Request, res: Response) => {
+  const inventoryId = getParam(req.params.inventoryId, "inventoryId");
+  const userId = req.user?.id;
+
+  await InventoryService.lockInventory(inventoryId, userId!);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    message: "Inventory locked succesfully",
+    success: true,
+  });
+});
+
+const releaseInventory = catchAsync(async (req: Request, res: Response) => {
+  const inventoryId = getParam(req.params.inventoryId, "inventoryId");
+
+  await InventoryService.releaseInventory(inventoryId);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    message: "Inventory released succesfully",
+    success: true,
+  });
+});
+
 export const inventoryController = {
   createInventory,
   getInventoryById,
-  // updateInventory,
+  updateInventory,
   getInventories,
+  lockInventory,
+  releaseInventory,
 };

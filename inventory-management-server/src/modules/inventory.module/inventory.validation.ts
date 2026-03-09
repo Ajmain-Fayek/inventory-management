@@ -142,3 +142,4 @@ export const updateInventorySchema = z
 
 export type TCreateInventoryPayload = z.infer<typeof createInventorySchema>;
 export type TUpdateInventoryPayload = z.infer<typeof updateInventorySchema>;
+export type TWriteAccess = z.infer<typeof writeAccess>;

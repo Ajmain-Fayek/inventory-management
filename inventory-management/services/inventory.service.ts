@@ -21,7 +21,17 @@ export const inventoryService = {
   }),
 
   updateInventory: catchAsync(async (inventoryId: string, payload: Partial<IInventory>) => {
-    const response = await axiosInstance.patch(`/api/v1/inventories/${inventoryId}`, payload);
+    const response = await axiosInstance.put(`/api/v1/inventories/${inventoryId}`, payload);
+    return response.data;
+  }),
+
+  lockInventory: catchAsync(async (inventoryId: string) => {
+    const response = await axiosInstance.put(`/api/v1/inventories/${inventoryId}/lock`);
+    return response.data;
+  }),
+  
+  releaseInventory: catchAsync(async (inventoryId: string) => {
+    const response = await axiosInstance.put(`/api/v1/inventories/${inventoryId}/release`);
     return response.data;
   }),
 };
