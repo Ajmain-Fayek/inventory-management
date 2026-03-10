@@ -57,12 +57,19 @@ export const auth = betterAuth({
   socialProviders: {
     google: {
       prompt: "select_account",
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: envConfig.GOOGLE_CLIENT_ID as string,
+      clientSecret: envConfig.GOOGLE_CLIENT_SECRET as string,
     },
     facebook: {
-      clientId: process.env.FACEBOOK_CLIENT_ID as string,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET as string,
+      clientId: envConfig.FACEBOOK_CLIENT_ID as string,
+      clientSecret: envConfig.FACEBOOK_CLIENT_SECRET as string,
+    },
+  },
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+      partitioned: envConfig.NODE_ENV === "production" ? true : false,
     },
   },
 });
