@@ -2,8 +2,6 @@
 import { createContext, useState, useContext, useEffect, useCallback } from "react";
 import { authService } from "@/services/auth.service";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 export interface IUser {
   id: string;
   name: string;
@@ -26,84 +24,74 @@ export interface IUserContextType {
   refreshSession: (args: SessionType) => Promise<void>;
 }
 
-// ── Context ───────────────────────────────────────────────────────────────────
-
 export const UserContext = createContext<IUserContextType | undefined>(undefined);
-
-// ── Provider ──────────────────────────────────────────────────────────────────
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<IUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * Hydrate user state from the better-auth session cookie.
-   * The cookie is HttpOnly and sent automatically by the browser — no localStorage needed.
-   */
-  const refreshSession = useCallback(async (args?: SessionType) => {
-    setIsLoading(true);
-    try {
-      // const session = await authService.getSession();
-      // console.log(session);
-      const user = localStorage.getItem("user");
-      if (user && JSON.parse(user) !== undefined) {
-        const userData = JSON.parse(user);
-        setUser(userData);
-        return;
-      }
+  const saveUser = useCallback((userData: IUser) => {
+    localStorage.setItem("user", JSON.stringify(userData));
 
-      if (args === "email-password") {
-        const result = await authService.getCurrentUser(); // Fetch latest user data
-        saveUser(result.data); // Update context with latest user data
-        return;
-      }
-      // if (session?.user && (args === "google" || args === "facebook")) {
-      //   // const result = await authService.googleLoginSuccess(); // Optional: fetch latest user data after social login
-      //   saveUser(session.user); // Update context with latest user data
-      //   return;
-      // }
-      localStorage.removeItem("user");
-      setUser(null);
-      return logout();
-    } catch {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setUser(userData);
   }, []);
 
-  // Hydrate on mount
-  useEffect(() => {
-    refreshSession();
-  }, [refreshSession]);
-
-  // ── Actions ──────────────────────────────────────────────────────────────
-
-  /** Update in-memory state only — no localStorage. */
-  const saveUser = (userData: IUser) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
-  };
-
-  /** Re-read from the server session (alias for refreshSession). */
   const loadUser = () => {
     refreshSession();
   };
 
-  /** Clear in-memory state — the server/cookie is cleared by logout(). */
-  const removeUser = () => {
+  const removeUser = useCallback(() => {
     localStorage.removeItem("user");
     setUser(null);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authService.logout();
     } finally {
       removeUser();
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/login";
+      }
     }
-  };
+  }, [removeUser]);
+
+  const refreshSession = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await authService.getCurrentUser();
+
+      if (result?.data) {
+        saveUser(result.data);
+        return;
+      }
+
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        if (userData) {
+          setUser(userData);
+          return;
+        }
+      }
+
+      throw new Error("No session found");
+    } catch (error) {
+      console.error("Session refresh failed:", error);
+      localStorage.removeItem("user");
+      setUser(null);
+
+      if (!window.location.pathname.startsWith("/auth/login")) {
+        logout();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveUser, logout]);
+
+  useEffect(() => {
+    refreshSession();
+  }, [refreshSession]);
 
   return (
     <UserContext.Provider
@@ -113,8 +101,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </UserContext.Provider>
   );
 };
-
-// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export const useUser = () => {
   const context = useContext(UserContext);

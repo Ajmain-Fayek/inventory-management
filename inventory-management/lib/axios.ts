@@ -1,8 +1,14 @@
 import axios from "axios";
-import { envConfig } from "../config/envConfig";
+
+const getBaseURL = () => {
+  if (typeof window === "undefined") {
+    return `${process.env.NEXT_PUBLIC_FRONTEND_BASE_URL}/api/proxy`;
+  }
+  return "/api/proxy";
+};
 
 export const axiosInstance = axios.create({
-  baseURL: envConfig.BACKEND_BASE_URL,
+  baseURL: getBaseURL(),
   headers: {
     "Content-Type": "application/json",
   },

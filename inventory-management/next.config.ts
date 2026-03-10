@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "api/proxy/:path*",
+        source: "/api/proxy/:path*",
         destination: "https://inventory-management-server-gffg.onrender.com/:path*",
       },
     ];

@@ -4,11 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 
-/**
- * Landing page for OAuth redirects (Google / Facebook).
- * better-auth completes the session server-side and redirects here.
- * We call refreshSession() to read the new session cookie and update state.
- */
 export default function AuthCallbackPage() {
   const router = useRouter();
   const { refreshSession } = useUser();

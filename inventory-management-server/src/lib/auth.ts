@@ -69,7 +69,7 @@ export const auth = betterAuth({
     defaultCookieAttributes: {
       sameSite: envConfig.NODE_ENV === "production" ? "lax" : "none",
       secure: true,
-      partitioned: envConfig.NODE_ENV === "production" ? true : false,
+      // partitioned: envConfig.NODE_ENV === "production" ? true : false,
     },
   },
 });
