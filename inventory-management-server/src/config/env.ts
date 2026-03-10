@@ -2,7 +2,7 @@ import "dotenv/config";
 import { AppError } from "@/errorHelper/AppError.js";
 
 interface EnvConfig {
-  PORT: number;
+  PORT?: number;
   DATABASE_URL: string;
   BACKEND_BASE_URL: string;
   FRONTEND_BASE_URL: string;
@@ -28,7 +28,6 @@ interface EnvConfig {
 }
 
 const requiredEnvVars = [
-  "PORT",
   "DATABASE_URL",
   "BACKEND_BASE_URL",
   "FRONTEND_BASE_URL",
@@ -61,7 +60,7 @@ function getEnvConfig(): EnvConfig {
   }
 
   return {
-    PORT: Number(process.env.PORT),
+    PORT: process.env.PORT ? Number(process.env.PORT) : 3000,
     DATABASE_URL: process.env.DATABASE_URL as string,
     BACKEND_BASE_URL: process.env.BACKEND_BASE_URL as string,
     FRONTEND_BASE_URL: process.env.FRONTEND_BASE_URL as string,
