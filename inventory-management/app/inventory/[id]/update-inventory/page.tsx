@@ -262,7 +262,8 @@ export default function UpdateInventoryPage() {
 
   useEffect(() => {
     const handleExit = () => {
-      navigator.sendBeacon(`${envConfig.BACKEND_BASE_URL}/api/v1/inventory/${id}/release`);
+      const proxyUrl = `/api/proxy/api/v1/inventory/${id}/release`;
+      navigator.sendBeacon(proxyUrl);
     };
 
     window.addEventListener("beforeunload", handleExit);
