@@ -15,7 +15,7 @@
     "seed:categories": "tsx seed/category.seed.ts",
     "seed:tags": "tsx seed/tag.seed.ts"
   },
-  "type": "module",
+  "type": "commonjs",
   "keywords": [],
   "author": "",
   "license": "ISC",
