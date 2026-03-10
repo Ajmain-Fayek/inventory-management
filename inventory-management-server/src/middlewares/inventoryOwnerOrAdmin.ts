@@ -35,7 +35,7 @@ export const inventoryOwnerOrAdmin = async (req: Request, res: Response, next: N
     throw new AppError("Invenotry not found", status.NOT_FOUND);
   }
 
-  // if in the proccess of update don't allow other writeAccess user
+  // if in the proccess of update, don't allow other writeAccess user
   if (inventory.isInEditMode && inventory.editingUserId !== userId) {
     throw new AppError("Inventory is being updated. Re-try after a while", status.FORBIDDEN);
   }
