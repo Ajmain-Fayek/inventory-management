@@ -70,6 +70,10 @@ const getInventories = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateInventory = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError("Unauthorized", status.UNAUTHORIZED);
+  }
+
   const inventoryId = getParam(req.params.inventoryId, "inventoryId");
 
   const { customFieldConfig, customIdTemplates, tags, writeAccess, ...rest } = await req.body;

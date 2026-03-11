@@ -80,14 +80,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Session refresh failed:", error);
       localStorage.removeItem("user");
       setUser(null);
-
-      if (!window.location.pathname.startsWith("/auth/login")) {
-        logout();
-      }
     } finally {
       setIsLoading(false);
     }
-  }, [saveUser, logout]);
+  }, [saveUser]);
 
   useEffect(() => {
     refreshSession();

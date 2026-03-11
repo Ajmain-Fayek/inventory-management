@@ -30,7 +30,6 @@ import {
   ISegment,
   TSaveStatus,
 } from "../../_interface";
-import { envConfig } from "@/config/envConfig";
 
 // -------------------------------------------------------
 // Component

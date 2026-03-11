@@ -23,7 +23,8 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthMe = error.config?.url?.includes("/api/v1/auth/me");
+    if (error.response?.status === 401 && !isAuthMe) {
       if (typeof window !== "undefined") {
         if (!window.location.pathname.startsWith("/auth/login")) {
           window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`;
