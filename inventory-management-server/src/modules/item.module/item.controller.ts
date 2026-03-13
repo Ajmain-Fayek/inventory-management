@@ -65,26 +65,22 @@ const createItem = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateItem = catchAsync(async (req: Request, res: Response) => {
-  const inventoryId = getParam(req.params.inventoryId, "inventoryId");
+  // const inventoryId = getParam(req.params.inventoryId, "inventoryId");
   const itemId = getParam(req.params.itemId, "itemId");
 
   const payload = await req.body;
-
-  console.log(payload, inventoryId, itemId);
 
   if (!payload) {
     throw new AppError(`Missing item payload or invalid payload`, status.BAD_REQUEST);
   }
 
-  // const result = await ItemService.upda(inventoryId, payload);
-
-  console.log("payload", payload);
+  const result = await ItemService.updateItem(itemId, payload);
 
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
     message: "Items created successfully",
-    data: { inventoryId, itemId },
+    data: result,
   });
 });
 

@@ -186,8 +186,55 @@ const createItem = async (inventoryId: string, payload) => {
   };
 };
 
+// @ts-expect-error/no-explicit-any (payload)
+const updateItem = async (itemId: string, payload) => {
+  const result = await prisma.$transaction(async (tx) => {
+    const updateItem = await tx.item.update({
+      where: { id: itemId },
+      data: {
+        ...payload,
+      },
+      include: {
+        customIdValues: {
+          omit: {
+            inventoryId: true,
+            itemId: true,
+            createdAt: true,
+            updatedAt: true,
+            version: true,
+          },
+        },
+        inventory: {
+          select: {
+            title: true,
+            customIdTemplates: {
+              omit: {
+                id: true,
+                inventoryId: true,
+                createdAt: true,
+                updatedAt: true,
+                version: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    return updateItem;
+  });
+
+  const { inventory, customIdValues, ...rest } = result;
+
+  return {
+    customId: assembleCustomId(inventory.customIdTemplates!, customIdValues!),
+    inventoryTitle: inventory.title,
+    ...rest,
+  };
+};
+
 export const ItemService = {
   createItem,
   getItems,
   getItemById,
+  updateItem,
 };
