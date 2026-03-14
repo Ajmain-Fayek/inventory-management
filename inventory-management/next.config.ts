@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        source: "/api/auth/:path*",
+        destination: "https://inventory-management-server-gffg.onrender.com/api/auth/:path*",
+      },
+      {
         source: "/api/proxy/:path*",
         destination: "https://inventory-management-server-gffg.onrender.com/:path*",
         // destination: "http://localhost:3000/:path*",
