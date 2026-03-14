@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { AppError } from "../../errorHelper/AppError.js";
 import { catchAsync } from "@/shared/catchAsync.js";
@@ -10,7 +10,6 @@ import status from "http-status";
 import { auth } from "@/lib/auth.js";
 import { CookieUtils } from "@/utils/cookie.js";
 
-// ─── Login ───────────────────────────────────────────────────────────────────
 const loginUser = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
   const result = await AuthService.loginUser(payload);
@@ -28,7 +27,6 @@ const loginUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─── Register ─────────────────────────────────────────────────────────────────
 const registerUser = catchAsync(async (req: Request, res: Response) => {
   const payload: IRegisterPayload = req.body;
   const result = await AuthService.registerUser(payload);
@@ -36,7 +34,6 @@ const registerUser = catchAsync(async (req: Request, res: Response) => {
 
   tokenUtils.setAccessTokenCookie(res, await accessToken);
   tokenUtils.setRefreshTokenCookie(res, await refreshToken);
-  // Use the better-auth session token (not the JWT accessToken) for the session cookie
   tokenUtils.setBetterAuthSessionCookie(res, token!);
 
   sendResponse(res, {
@@ -47,16 +44,10 @@ const registerUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─── Logout ───────────────────────────────────────────────────────────────────
 const logoutUser = catchAsync(async (req: Request, res: Response) => {
-  // Tell better-auth to invalidate the session on the server
-  try {
-    await auth.api.signOut({
-      headers: req.headers as Record<string, string>,
-    });
-  } catch {
-    // Even if sign-out fails (e.g. session already expired), we still clear cookies
-  }
+  await auth.api.signOut({
+    headers: req.headers as Record<string, string>,
+  });
 
   const cookieOptions = {
     httpOnly: true,
@@ -78,11 +69,6 @@ const logoutUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─── Get Current User (me) ───────────────────────────────────────────────────
-/**
- * Returns the currently authenticated user from req.user
- * (populated by authMiddleware).
- */
 const getMe = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
     throw new AppError("Unauthorized", 401);
@@ -96,12 +82,6 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ─── Google OAuth success callback ───────────────────────────────────────────
-/**
- * Called by our backend after better-auth completes the OAuth flow.
- * Mints custom JWT tokens from the new session, sets cookies, then
- * redirects the browser back to the frontend.
- */
 const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
   const redirectPath = (req.query.redirect as string) || "/";
 
@@ -135,7 +115,6 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
 
   console.log(result);
 
-  // Sanitise redirect to prevent open-redirect attacks
   const isValidRedirect = redirectPath.startsWith("/") && !redirectPath.startsWith("//");
   const finalRedirectPath = isValidRedirect ? redirectPath : "/";
 

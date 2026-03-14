@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma.js";
 import envConfig from "@/config/env.js";
 import { JWTPayload } from "better-auth";
+import { fromNodeHeaders } from "better-auth/node";
 
 declare global {
   namespace Express {
@@ -26,12 +27,12 @@ declare global {
 // ──────────────────────────────────────────────────────────────────────────────
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Forward all incoming headers (including Cookie) to better-auth's session resolver
     const session = await auth.api.getSession({
-      headers: req.headers as Record<string, string>,
+      headers: fromNodeHeaders(req.headers),
     });
 
     const accessToken = (await req.cookies["accessToken"]) || null;
+
     if (accessToken) {
       const data = jwt.verify(accessToken, envConfig.ACCESS_TOKEN_SECRET) as JWTPayload;
 
@@ -86,25 +87,3 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     next(err);
   }
 };
-
-/**
- * roleMiddleware
- * -------------
- * Factory that returns a middleware restricting access to the given roles.
- * Must be used AFTER authMiddleware (relies on req.user being populated).
- *
- * Usage:
- *   router.get("/admin-only", authMiddleware, roleMiddleware(["ADMIN"]), handler)
- */
-export const roleMiddleware =
-  (allowedRoles: string[]) => (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new AppError("Unauthorized", 401));
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      return next(new AppError(`Forbidden – requires one of: ${allowedRoles.join(", ")}`, 403));
-    }
-
-    next();
-  };
