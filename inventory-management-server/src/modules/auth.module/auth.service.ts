@@ -12,20 +12,16 @@ import { tokenUtils } from "@/utils/token.js";
 const loginUser = async (payload: ILoginPayload) => {
   const { email, password } = payload;
 
-  // better-auth handles credential verification (bcrypt comparison internally)
   const data = await auth.api.signInEmail({
     body: { email, password },
   });
 
-  // Cast to access additional fields set by the schema
   const user = data.user as typeof data.user & {
     role?: string;
     status?: string;
   };
 
-  // Block check — must happen AFTER better-auth verifies the credentials
   if (user.status === "BLOCKED") {
-    // Sign out the session better-auth just created so it doesn't persist
     await auth.api.signOut({
       headers: { Cookie: `better-auth.session_token=${data.token}` },
     });
@@ -80,9 +76,6 @@ const registerUser = async (payload: IRegisterPayload) => {
   }
 
   try {
-    // Ensure role/status are set (better-auth creates the user without them
-    // unless additionalFields supply defaults, which our schema does — this is
-    // a safety net for the first migration run).
     const user = await prisma.$transaction(async (tx) => {
       return tx.user.update({
         where: { id: data.user.id },
@@ -128,11 +121,6 @@ const registerUser = async (payload: IRegisterPayload) => {
 //----------------------------------------
 //       Google / Social Login Success
 //----------------------------------------
-/**
- * Called after better-auth completes the OAuth flow.
- * better-auth has already created/updated the user row in the DB;
- * we just need to fetch it and mint our JWT tokens.
- */
 const googleLoginSuccess = async (session: {
   user: { id: string; role?: string; name: string; email?: string };
 }) => {
