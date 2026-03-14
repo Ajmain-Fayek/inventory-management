@@ -33,7 +33,7 @@ export const auth = betterAuth({
     },
   },
 
-  baseURL: envConfig.FRONTEND_BASE_URL,
+  baseURL: `${envConfig.FRONTEND_BASE_URL}/api/proxy`,
   emailAndPassword: {
     enabled: true,
     // requireEmailVerification: true,
