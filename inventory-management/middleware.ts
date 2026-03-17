@@ -4,7 +4,8 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const sessionToken = req.cookies.get("better-auth.session_token")?.value;
-  const isAuthenticated = !!sessionToken;
+  const socialSessionToken = req.cookies.get("__Secure-better-auth.session_token")?.value;
+  const isAuthenticated = !!(sessionToken || socialSessionToken);
 
   const isAuthRoute = pathname.startsWith("/auth");
 
