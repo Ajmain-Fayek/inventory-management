@@ -60,6 +60,7 @@ const logoutUser = catchAsync(async (req: Request, res: Response) => {
   CookieUtils.clearCookie(res, "accessToken", cookieOptions);
   CookieUtils.clearCookie(res, "refreshToken", cookieOptions);
   CookieUtils.clearCookie(res, "better-auth.session_token", cookieOptions);
+  CookieUtils.clearCookie(res, "__Secure-better-auth.session_token", cookieOptions);
 
   sendResponse(res, {
     httpStatusCode: status.OK,

@@ -19,7 +19,7 @@ export const authService = {
   }),
 
   logout: catchAsync(async () => {
-    await axiosInstance.post("/api/v1/auth/logout");
+    await Promise.all([axiosInstance.post("/api/v1/auth/logout"), authClient.signOut()]);
   }),
 
   googleLogin: catchAsync(async () => {
