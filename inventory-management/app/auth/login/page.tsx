@@ -15,6 +15,7 @@ import { Input } from "@heroui/input";
 import { Link } from "@heroui/link";
 import { Suspense, useState } from "react";
 import axios from "axios";
+import { getErrorMessage } from "@/utils/errorParser";
 
 export default function LoginPageWrapper() {
   return (
@@ -53,13 +54,8 @@ function LoginPage() {
       const redirect = searchParams.get("redirect") || "/";
       router.push(redirect);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to login. Please check your credentials.");
-      }
+      const message = getErrorMessage(err);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

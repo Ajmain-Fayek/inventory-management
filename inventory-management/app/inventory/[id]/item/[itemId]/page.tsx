@@ -109,7 +109,7 @@ export default function ItemPage() {
         </div>
       </motion.div>
 
-      {/* 2. Print-Only Header (Visible only on paper) */}
+      {/* Print Header (Visible only on paper) */}
       <div className="hidden print:flex w-full justify-between items-end border-b-2 border-black pb-4 mb-4">
         <div>
           <h1 className="text-3xl font-bold uppercase">Item Specification</h1>
@@ -121,7 +121,7 @@ export default function ItemPage() {
         </div>
       </div>
 
-      {/* 3. Main Content Card */}
+      {/* Main Content Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -141,12 +141,11 @@ export default function ItemPage() {
                     key={key}
                     className={`${isTextarea ? "col-span-full" : "col-span-1"} flex flex-col gap-1 border-b border-default-100 pb-2 print:border-gray-200`}
                   >
-                    {/* Field Label */}
                     <span className="text-xs font-bold uppercase text-default-400 print:text-gray-500">
                       {label}
                     </span>
 
-                    {/* Field Value - Renders as Input on Screen, Text on Print */}
+                    {/* Field Value */}
                     <div className="print:hidden">
                       {isTextarea ? (
                         <Textarea readOnly variant="bordered" value={value as string} />

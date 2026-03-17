@@ -15,6 +15,7 @@ import { Mail, Lock, User } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { useLanguage } from "../../../context/LanguageContext";
 import { authService } from "../../../services/auth.service";
+import { getErrorMessage } from "@/utils/errorParser";
 
 export default function RegisterPage() {
   const { t } = useLanguage();
@@ -44,13 +45,8 @@ export default function RegisterPage() {
 
       router.push("/");
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to register. Please try again.");
-      }
+      const message = getErrorMessage(err);
+      setError(message);
     } finally {
       setIsLoading(false);
     }

@@ -45,7 +45,7 @@ export default function UpdateInventoryPage() {
   const [countdown, setCountdown] = useState<number>(5);
   const [error, setError] = useState("");
 
-  // ── Form states ──────────────────────────────────────
+  // Form states
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -61,14 +61,14 @@ export default function UpdateInventoryPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isInvPublic, setIsInvPublic] = useState(false);
 
-  // ── Refs for auto-save tracking ──────────────────────
+  // Refs for auto-save tracking
   const isInitialized = useRef(false);
   const lastSavedSnapshot = useRef<string>("");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const isSaving = useRef(false);
 
-  // ── Build payload ─────────────────────────────────────
+  // Build payload
   const buildPayload = useCallback(
     () => ({
       title,
@@ -76,7 +76,6 @@ export default function UpdateInventoryPage() {
       imageUrl,
       categoryName: category,
       tags: tags.map((t) => t.name),
-      // Always derive from the ordered items array — never from customIdValues state
       customIdTemplates: deriveCustomIdValues(customIdItems),
       customFieldConfig: transformToCustomFieldConfig(customFields),
       isPublic: isInvPublic,
@@ -89,12 +88,11 @@ export default function UpdateInventoryPage() {
 
   const getSnapshot = useCallback(() => JSON.stringify(buildPayload()), [buildPayload]);
 
-  // ── Core save function ────────────────────────────────
+  // Core save function
   const doSave = useCallback(async () => {
     if (isSaving.current) return;
     isSaving.current = true;
 
-    // Clear any running countdown
     if (countdownInterval.current) {
       clearInterval(countdownInterval.current);
       countdownInterval.current = null;
@@ -116,7 +114,7 @@ export default function UpdateInventoryPage() {
       lastSavedSnapshot.current = getSnapshot();
       console.log(response.data);
       setSaveStatus("saved");
-      // Reset to idle after 4 s
+
       setTimeout(() => setSaveStatus("idle"), 4000);
     } else {
       setSaveStatus("error");
@@ -124,7 +122,7 @@ export default function UpdateInventoryPage() {
     }
   }, [id, buildPayload, getSnapshot]);
 
-  // ── Countdown helper ──────────────────────────────────
+  // Countdown helper
   const startCountdown = useCallback(
     (seconds: number) => {
       if (countdownInterval.current) clearInterval(countdownInterval.current);
@@ -145,14 +143,13 @@ export default function UpdateInventoryPage() {
     [doSave],
   );
 
-  // ── Trigger auto-save on any form change ─────────────
+  // Trigger auto-save
   useEffect(() => {
     if (!isInitialized.current) return;
 
     const currentSnapshot = getSnapshot();
     if (currentSnapshot === lastSavedSnapshot.current) return;
 
-    // Mark as editing — reset debounce
     setSaveStatus("editing");
 
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -162,7 +159,6 @@ export default function UpdateInventoryPage() {
     }
 
     debounceTimer.current = setTimeout(() => {
-      // After 1.5 s of inactivity, start 5-second countdown
       startCountdown(7);
     }, 1500);
 
@@ -182,7 +178,7 @@ export default function UpdateInventoryPage() {
     users,
   ]);
 
-  // ── Load existing inventory ───────────────────────────
+  // Load existing inventory
   useEffect(() => {
     const loadData = async () => {
       const [invRes, catRes] = await Promise.all([
@@ -193,8 +189,6 @@ export default function UpdateInventoryPage() {
       if (invRes?.success && invRes.data) {
         const inv: IInventory = invRes.data;
 
-        // Build the initial snapshot directly from raw API data (before React state batches)
-        // so the change-detection effect never fires spuriously on first mount.
         const invCustomFields = inventoryToCustomFields(inv);
         const invSegments = inv.customIdTemplates ? inventoryToSegments(inv) : [];
         const invTags = (inv.inventoryTags ?? []).map((name: string) => name);
@@ -212,7 +206,6 @@ export default function UpdateInventoryPage() {
         };
         lastSavedSnapshot.current = JSON.stringify(initialPayload);
 
-        // Now apply all state updates (batched by React)
         setTitle(inv.title ?? "");
         setDescription(inv.description ?? "");
         setCategory(inv.categoryName ?? "");
@@ -229,7 +222,6 @@ export default function UpdateInventoryPage() {
       setCategories(catRes?.data ?? []);
       setLoading(false);
 
-      // Activate change-detection after state settles
       setTimeout(() => {
         isInitialized.current = true;
       }, 300);
@@ -276,7 +268,7 @@ export default function UpdateInventoryPage() {
 
   return (
     <div className="flex flex-col gap-8 py-8 px-4 max-w-4xl mx-auto">
-      {/* ── Header bar ── */}
+      {/* Header bar */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -341,7 +333,7 @@ export default function UpdateInventoryPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <Tabs aria-label="Inventory Options" color="primary" variant="underlined">
         {/* GENERAL SETTINGS */}
         <Tab
