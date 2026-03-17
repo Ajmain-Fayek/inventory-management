@@ -12,9 +12,17 @@ import { tokenUtils } from "@/utils/token.js";
 const loginUser = async (payload: ILoginPayload) => {
   const { email, password } = payload;
 
-  const data = await auth.api.signInEmail({
-    body: { email, password },
-  });
+  let data;
+  try {
+    data = await auth.api.signInEmail({
+      body: { email, password },
+    });
+  } catch (error: any) {
+    if (error.status === 401 || error.message?.includes("already exists")) {
+      throw new AppError("Invalid email or password.", status.UNAUTHORIZED);
+    }
+    throw error;
+  }
 
   const user = data.user as typeof data.user & {
     role?: string;
@@ -28,31 +36,19 @@ const loginUser = async (payload: ILoginPayload) => {
     throw new AppError("Your account has been blocked by an admin", 403);
   }
 
-  const accessToken = await tokenUtils.getAccessToken({
+  const tokenPaylod = {
     userId: user.id,
     role: user.role,
     name: user.name,
     email: user.email,
     status: user.status,
     emailVerified: user.emailVerified,
-  });
+  };
 
-  const refreshToken = await tokenUtils.getRefreshToken({
-    userId: user.id,
-    role: user.role,
-    name: user.name,
-    email: user.email,
-    status: user.status,
-    emailVerified: user.emailVerified,
-  });
-
-  // await prisma.account.update({
-  //   where: { id: user.id },
-  //   data: {
-  //     accessToken,
-  //     refreshToken,
-  //   },
-  // });
+  const [accessToken, refreshToken] = await Promise.all([
+    tokenUtils.getAccessToken(tokenPaylod),
+    tokenUtils.getRefreshToken(tokenPaylod),
+  ]);
 
   return {
     ...data,
@@ -94,23 +90,19 @@ const registerUser = async (payload: IRegisterPayload) => {
       });
     });
 
-    const accessToken = tokenUtils.getAccessToken({
+    const tokenPaylod = {
       userId: user.id,
       role: user.role,
       name: user.name,
       email: user.email,
       status: user.status,
       emailVerified: user.emailVerified,
-    });
+    };
 
-    const refreshToken = tokenUtils.getRefreshToken({
-      userId: user.id,
-      role: user.role,
-      name: user.name,
-      email: user.email,
-      status: user.status,
-      emailVerified: user.emailVerified,
-    });
+    const [accessToken, refreshToken] = await Promise.all([
+      tokenUtils.getAccessToken(tokenPaylod),
+      tokenUtils.getRefreshToken(tokenPaylod),
+    ]);
 
     return {
       ...data,
@@ -120,7 +112,6 @@ const registerUser = async (payload: IRegisterPayload) => {
     };
   } catch (error) {
     logger.error("Transaction error: ", error);
-    // Clean up the better-auth user so the email can be re-used
     await prisma.user.delete({ where: { id: data.user.id } });
     throw error;
   }
@@ -132,7 +123,6 @@ const registerUser = async (payload: IRegisterPayload) => {
 const googleLoginSuccess = async (session: {
   user: { id: string; role?: string; name: string; email?: string };
 }) => {
-  // Fetch the persisted user (better-auth already created it)
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
   });
@@ -152,23 +142,19 @@ const googleLoginSuccess = async (session: {
       throw new AppError("Failed to create user after social login", status.INTERNAL_SERVER_ERROR);
     }
 
-    const accessToken = tokenUtils.getAccessToken({
+    const tokenPaylod = {
       userId: result.id,
       role: result.role,
       name: result.name,
       email: result.email,
       status: result.status,
       emailVerified: result.emailVerified,
-    });
+    };
 
-    const refreshToken = tokenUtils.getRefreshToken({
-      userId: result.id,
-      role: result.role,
-      name: result.name,
-      email: result.email,
-      status: result.status,
-      emailVerified: result.emailVerified,
-    });
+    const [accessToken, refreshToken] = await Promise.all([
+      tokenUtils.getAccessToken(tokenPaylod),
+      tokenUtils.getRefreshToken(tokenPaylod),
+    ]);
 
     return { accessToken, refreshToken, user: result };
   }
@@ -177,23 +163,19 @@ const googleLoginSuccess = async (session: {
     throw new AppError("Your account has been blocked by an admin", 403);
   }
 
-  const accessToken = tokenUtils.getAccessToken({
+  const tokenPaylod = {
     userId: user.id,
     role: user.role,
     name: user.name,
     email: user.email,
     status: user.status,
     emailVerified: user.emailVerified,
-  });
+  };
 
-  const refreshToken = tokenUtils.getRefreshToken({
-    userId: user.id,
-    role: user.role,
-    name: user.name,
-    email: user.email,
-    status: user.status,
-    emailVerified: user.emailVerified,
-  });
+  const [accessToken, refreshToken] = await Promise.all([
+    tokenUtils.getAccessToken(tokenPaylod),
+    tokenUtils.getRefreshToken(tokenPaylod),
+  ]);
 
   return { accessToken, refreshToken, user };
 };

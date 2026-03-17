@@ -15,9 +15,11 @@ const loginUser = catchAsync(async (req: Request, res: Response) => {
   const result = await AuthService.loginUser(payload);
   const { accessToken, refreshToken, token, ...rest } = result;
 
-  tokenUtils.setAccessTokenCookie(res, accessToken);
-  tokenUtils.setRefreshTokenCookie(res, refreshToken);
-  tokenUtils.setBetterAuthSessionCookie(res, token);
+  await Promise.all([
+    tokenUtils.setAccessTokenCookie(res, accessToken),
+    tokenUtils.setRefreshTokenCookie(res, refreshToken),
+    tokenUtils.setBetterAuthSessionCookie(res, token!),
+  ]);
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -32,9 +34,11 @@ const registerUser = catchAsync(async (req: Request, res: Response) => {
   const result = await AuthService.registerUser(payload);
   const { accessToken, refreshToken, token, ...rest } = result;
 
-  tokenUtils.setAccessTokenCookie(res, await accessToken);
-  tokenUtils.setRefreshTokenCookie(res, await refreshToken);
-  tokenUtils.setBetterAuthSessionCookie(res, token!);
+  await Promise.all([
+    tokenUtils.setAccessTokenCookie(res, accessToken),
+    tokenUtils.setRefreshTokenCookie(res, refreshToken),
+    tokenUtils.setBetterAuthSessionCookie(res, token!),
+  ]);
 
   sendResponse(res, {
     httpStatusCode: status.CREATED,
