@@ -67,9 +67,17 @@ const loginUser = async (payload: ILoginPayload) => {
 const registerUser = async (payload: IRegisterPayload) => {
   const { name, email, password } = payload;
 
-  const data = await auth.api.signUpEmail({
-    body: { name, email, password },
-  });
+  let data;
+  try {
+    data = await auth.api.signUpEmail({
+      body: { name, email, password },
+    });
+  } catch (error: any) {
+    if (error.status === 400 || error.message?.includes("already exists")) {
+      throw new AppError("User already exists. Use another email.", status.BAD_REQUEST);
+    }
+    throw error;
+  }
 
   if (!data.user) {
     throw new AppError("Failed to register user", status.BAD_REQUEST);
