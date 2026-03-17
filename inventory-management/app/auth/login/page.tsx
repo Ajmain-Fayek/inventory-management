@@ -14,7 +14,6 @@ import { motion } from "framer-motion";
 import { Input } from "@heroui/input";
 import { Link } from "@heroui/link";
 import { Suspense, useState } from "react";
-import axios from "axios";
 import { getErrorMessage } from "@/utils/errorParser";
 
 export default function LoginPageWrapper() {
