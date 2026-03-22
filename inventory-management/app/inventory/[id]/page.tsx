@@ -39,25 +39,18 @@ export default function InventoryPage() {
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set());
 
   const getInventories = async () => {
-    if (!inventory || !items || items.length <= 0) {
+    const [_inventory, _items] = await Promise.all([
+      inventoryService.getInventoryById(id as string),
+      itemService.getInvItems(id as string, itemPage, itemRecordLimit),
+    ]);
 
-      const [_inventory, _items] = await Promise.all([
-        inventoryService.getInventoryById(id as string),
-        itemService.getInvItems(id as string, itemPage, itemRecordLimit),
-      ]);
-
-      const { data, meta } = await _items;
-      const customCols = await getInventoryColumns(_inventory.data);
-      setInventoryColumns(customCols);
-      setInventory(_inventory.data);
-      setItems(data);
-      setTotalItems(meta.total);
-      setLoading(false);
-      return;
-    }
-
+    const { data, meta } = await _items;
+    const customCols = await getInventoryColumns(_inventory.data);
+    setInventoryColumns(customCols);
+    setInventory(_inventory.data);
+    setItems(data);
+    setTotalItems(meta.total);
     setLoading(false);
-    return;
   };
 
   useEffect(() => {

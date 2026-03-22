@@ -21,7 +21,7 @@ export default function CreateItemPage() {
   const { id } = params;
   const router = useRouter();
   const { t } = useLanguage();
-  const { inventoryColumns, inventory, setInventoryColumns, setInventory, setItems, items } =
+  const { inventoryColumns, inventory, setInventoryColumns, setInventory } =
     useInventory();
   const [loading, setLoading] = useState(true);
   const [savingInv, setSavingInv] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -88,7 +88,6 @@ export default function CreateItemPage() {
 
     if (response.success) {
       setSavingInv("saved");
-      setItems([...items, response.data]);
       setTimeout(() => {
         router.push(`/inventory/${id}`);
       }, 1500);
