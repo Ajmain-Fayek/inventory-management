@@ -144,6 +144,7 @@ function LoginPage() {
                 color="primary"
                 type="submit"
                 isLoading={isLoading}
+                isDisabled={isLoading || isSocialLoading !== null}
                 className="mt-2 font-semibold shadow-lg shadow-primary/30"
               >
                 {t("auth.login")}
@@ -161,7 +162,7 @@ function LoginPage() {
                 variant="flat"
                 className="bg-default-100/50 hover:bg-default-200/50"
                 isLoading={isSocialLoading === "google"}
-                isDisabled={isSocialLoading !== null}
+                isDisabled={isSocialLoading !== null || isLoading}
                 onPress={handleGoogleLogin}
                 startContent={isSocialLoading !== "google" && <FcGoogle size={18} />}
               >
@@ -171,7 +172,7 @@ function LoginPage() {
                 variant="flat"
                 className="bg-default-100/50 hover:bg-default-200/50"
                 isLoading={isSocialLoading === "facebook"}
-                isDisabled={isSocialLoading !== null}
+                isDisabled={isSocialLoading !== null || isLoading}
                 onPress={handleFacebookLogin}
                 startContent={
                   isSocialLoading !== "facebook" && (

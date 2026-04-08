@@ -123,6 +123,17 @@ const releaseInventory = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteInventory = catchAsync(async (req: Request, res: Response) => {
+  const inventoryId = getParam(req.params.inventoryId, "inventoryId");
+  await InventoryService.deleteInventory(inventoryId);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    message: "Inventory deleted successfully",
+    success: true,
+  });
+});
+
 export const inventoryController = {
   createInventory,
   getInventoryById,
@@ -130,4 +141,5 @@ export const inventoryController = {
   getInventories,
   lockInventory,
   releaseInventory,
+  deleteInventory,
 };

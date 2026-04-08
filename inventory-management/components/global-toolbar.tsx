@@ -11,18 +11,20 @@ interface GlobalToolbarProps {
   onDelete?: () => void;
   isEditDisabled?: boolean;
   isDeleteDisabled?: boolean;
+  isAddDisabled?: boolean;
   title?: string;
   children?: React.ReactNode;
 }
 
 export function GlobalToolbar({
+  isAddDisabled,
   onAdd,
   onEdit,
   onDelete,
   isEditDisabled = true,
   isDeleteDisabled = true,
   title,
-  children
+  children,
 }: GlobalToolbarProps) {
   const { t } = useLanguage();
 
@@ -33,27 +35,35 @@ export function GlobalToolbar({
       </div>
       <div className="flex gap-2">
         {onAdd && (
-          <Button size="sm" color="primary" startContent={<PlusIcon size={16} />} onPress={onAdd}>
+          <Button
+            isDisabled={isAddDisabled}
+            size="sm"
+            color="primary"
+            startContent={<PlusIcon size={16} />}
+            onPress={onAdd}
+          >
             {t("toolbar.add")}
           </Button>
         )}
         {onEdit && (
-          <Button size="sm" 
-            isDisabled={isEditDisabled} 
-            color="secondary" 
-            variant="flat" 
-            startContent={<EditIcon size={16} />} 
+          <Button
+            size="sm"
+            isDisabled={isEditDisabled}
+            color="secondary"
+            variant="flat"
+            startContent={<EditIcon size={16} />}
             onPress={onEdit}
           >
             {t("toolbar.edit")}
           </Button>
         )}
         {onDelete && (
-          <Button size="sm" 
-            isDisabled={isDeleteDisabled} 
-            color="danger" 
-            variant="flat" 
-            startContent={<TrashIcon size={16} />} 
+          <Button
+            size="sm"
+            isDisabled={isDeleteDisabled}
+            color="danger"
+            variant="flat"
+            startContent={<TrashIcon size={16} />}
             onPress={onDelete}
           >
             {t("toolbar.delete")}

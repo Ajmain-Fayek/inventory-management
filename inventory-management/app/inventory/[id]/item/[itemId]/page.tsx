@@ -20,7 +20,14 @@ export default function ItemPage() {
   const { t } = useLanguage();
   const params = useParams();
   const { id, itemId } = params;
-  const { items, inventoryColumns, inventory, setInventoryColumns, setInventory } = useInventory();
+  const {
+    items,
+    inventoryColumns,
+    inventory,
+    setInventoryColumns,
+    setInventory,
+    isLockedByOtherUser,
+  } = useInventory();
   const [item, setItem] = useState<IItem>();
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -102,12 +109,22 @@ export default function ItemPage() {
             Print
           </Button>
           <Button
+            isDisabled={isLockedByOtherUser}
             color="secondary"
             onPress={() => router.push(`/inventory/${id}/item/${itemId}/update-item`)}
             startContent={<Edit size={18} />}
-          ></Button>
+          >
+            Edit
+          </Button>
         </div>
       </motion.div>
+
+      {isLockedByOtherUser && (
+        <div className="warning max-w-4xl px-2 bg-red-50 text-red-600 text-center w-fit">
+          This inventory is currently read-only because another user is editing it. Please try again
+          in a few minutes.
+        </div>
+      )}
 
       {/* Print Header (Visible only on paper) */}
       <div className="hidden print:flex w-full justify-between items-end border-b-2 border-black pb-4 mb-4">

@@ -208,6 +208,11 @@ const getInventories = async (options?: { page?: number; recordLimit?: number })
             name: true,
           },
         },
+        _count: {
+          select: {
+            items: true,
+          },
+        },
       },
       skip,
       take: limit,
@@ -222,6 +227,7 @@ const getInventories = async (options?: { page?: number; recordLimit?: number })
     ...inv,
     inventoryTags: inv.inventoryTags.map((t) => t.tagName),
     creator: inv.creator.name,
+    itemCount: inv._count.items,
   }));
 
   return {
@@ -316,13 +322,23 @@ const updateInventory = async (
 };
 
 const lockInventory = async (inventoryId: string, userId: string) => {
-  await prisma.inventory.update({
-    where: { id: inventoryId },
+  const lockResult = await prisma.inventory.updateMany({
+    where: {
+      id: inventoryId,
+      OR: [{ isInEditMode: false }, { editingUserId: userId }],
+    },
     data: {
       isInEditMode: true,
       editingUserId: userId,
     },
   });
+
+  if (lockResult.count === 0) {
+    throw new AppError(
+      "This inventory is currently being edited by another user. Please try again later.",
+      status.CONFLICT,
+    );
+  }
 
   return;
 };
@@ -339,6 +355,19 @@ const releaseInventory = async (inventoryId: string) => {
   return;
 };
 
+const deleteInventory = async (inventoryId: string) => {
+  try {
+    await prisma.inventory.delete({
+      where: { id: inventoryId },
+    });
+  } catch (error) {
+    if (hasPrismaErrorCode(error, "P2025")) {
+      throw new AppError("Inventory not found", status.NOT_FOUND);
+    }
+    throw error;
+  }
+};
+
 export const InventoryService = {
   createInventory,
   getInventoryById,
@@ -346,4 +375,5 @@ export const InventoryService = {
   updateInventory,
   lockInventory,
   releaseInventory,
+  deleteInventory,
 };

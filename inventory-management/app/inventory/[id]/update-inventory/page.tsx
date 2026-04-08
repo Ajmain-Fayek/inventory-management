@@ -19,6 +19,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useParams, useRouter } from "next/navigation";
 import { Select, SelectItem } from "@heroui/select";
 import { Input, Textarea } from "@heroui/input";
+import { useUser } from "@/context/UserContext";
 import { Spinner } from "@heroui/spinner";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Button } from "@heroui/button";
@@ -39,6 +40,7 @@ export default function UpdateInventoryPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const { user } = useUser();
 
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<TSaveStatus>("idle");
@@ -189,6 +191,17 @@ export default function UpdateInventoryPage() {
       if (invRes?.success && invRes.data) {
         const inv: IInventory = invRes.data;
 
+        const lockedBySomeoneElse = inv.isInEditMode && inv.editingUserId !== user?.id;
+
+        if (lockedBySomeoneElse) {
+          router.replace(`/inventory/${id}`);
+          return;
+        }
+        if (inv.isPublic && !!(inv.creatorId !== user?.id)) {
+          router.replace(`/inventory/${id}`);
+          return;
+        }
+
         const invCustomFields = inventoryToCustomFields(inv);
         const invSegments = inv.customIdTemplates ? inventoryToSegments(inv) : [];
         const invTags = (inv.inventoryTags ?? []).map((name: string) => name);
@@ -228,7 +241,9 @@ export default function UpdateInventoryPage() {
     };
 
     loadData();
-  }, [id]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, router]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -244,7 +259,19 @@ export default function UpdateInventoryPage() {
   // Optimistic Locking
   // -----------------------------
   useEffect(() => {
-    inventoryService.lockInventory(id);
+    const acquireLock = async () => {
+      try {
+        const lockResponse = await inventoryService.lockInventory(id);
+        if (!lockResponse?.success) {
+          setError(lockResponse?.message ?? "Could not lock this inventory for editing.");
+        }
+      } catch (err) {
+        setError((err as { message?: string })?.message ?? "Could not lock this inventory for editing.");
+        router.replace(`/inventory/${id}`);
+      }
+    };
+
+    acquireLock();
 
     return () => {
       inventoryService.releaseInventory(id);
@@ -253,7 +280,7 @@ export default function UpdateInventoryPage() {
 
   useEffect(() => {
     const handleExit = () => {
-      const proxyUrl = `/api/proxy/api/v1/inventory/${id}/release`;
+      const proxyUrl = `/api/proxy/api/v1/inventories/${id}/release`;
       navigator.sendBeacon(proxyUrl);
     };
 

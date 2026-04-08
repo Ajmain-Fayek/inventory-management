@@ -84,9 +84,21 @@ const updateItem = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteItem = catchAsync(async (req: Request, res: Response) => {
+  const itemId = getParam(req.params.itemId, "itemId");
+  await ItemService.deleteItem(itemId);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Item deleted successfully",
+  });
+});
+
 export const itemController = {
   createItem,
   getItemById,
   getItems,
   updateItem,
+  deleteItem,
 };

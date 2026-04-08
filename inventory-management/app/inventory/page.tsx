@@ -3,6 +3,7 @@
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
 import { inventoryService } from "@/services/inventory.service";
 import InventorySkeleton from "@/components/inventorySkeleton";
+import { getErrorMessage } from "@/utils/errorParser";
 import { GlobalToolbar } from "@/components/global-toolbar";
 import { useInventory } from "@/context/InventoryContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -32,6 +33,7 @@ export default function AllInventoriesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getInventories = async () => {
     setError("");
@@ -66,6 +68,21 @@ export default function AllInventoriesPage() {
     router.push(`/inventory/${key}`);
   };
 
+  const handleDelete = async () => {
+    if (selectedKeys.size === 0) return;
+    setIsDeleting(true);
+    setError("");
+    try {
+      await Promise.all(Array.from(selectedKeys).map((id) => inventoryService.deleteInventory(id)));
+      setSelectedKeys(new Set());
+      await getInventories();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return <InventorySkeleton />;
   }
@@ -89,10 +106,14 @@ export default function AllInventoriesPage() {
         <GlobalToolbar
           title={t("inventories.table.title")}
           onAdd={() => router.push("/inventory/create")}
-          onEdit={() => console.log("Edit Inventories", Array.from(selectedKeys))}
-          onDelete={() => console.log("Delete Inventories", Array.from(selectedKeys))}
+          onEdit={() => {
+            if (selectedKeys.size === 1) {
+              router.push(`/inventory/${Array.from(selectedKeys)[0]}/update-inventory`);
+            }
+          }}
+          onDelete={handleDelete}
           isEditDisabled={selectedKeys.size !== 1}
-          isDeleteDisabled={selectedKeys.size === 0}
+          isDeleteDisabled={selectedKeys.size === 0 || isDeleting}
         />
 
         {/* Filters and Rows Per Page Header */}

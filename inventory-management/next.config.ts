@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
       {
         source: "/api/auth/:path*",
         destination: "https://inventory-management-server-gffg.onrender.com/api/auth/:path*",
+        // destination: "http://localhost:3000/api/auth/:path*",
       },
       {
         source: "/api/proxy/:path*",

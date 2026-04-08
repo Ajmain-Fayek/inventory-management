@@ -2,6 +2,7 @@
 
 import { TCustomValueKeyPair, IInventory, IItem } from "@/app/inventory/_interface";
 import { createContext, ReactNode, useContext, useState } from "react";
+import { useUser } from "./UserContext";
 
 interface IInventoryContextType {
   allInventories: IInventory[];
@@ -28,6 +29,8 @@ interface IInventoryContextType {
   setItemRecordLimit: (i: number) => void;
   totalItems: number;
   setTotalItems: (i: number) => void;
+  isCurrentUserEditing: boolean;
+  isLockedByOtherUser: boolean;
 }
 
 const InventoryContext = createContext<IInventoryContextType | undefined>(undefined);
@@ -48,6 +51,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   const [itemTotalPages, setItemTotalPages] = useState<number>(1);
   const [itemRecordLimit, setItemRecordLimit] = useState<number>(15);
   const [totalItems, setTotalItems] = useState<number>(0);
+
+  const { user } = useUser();
+  const isCurrentUserEditing = !!(inventory?.isInEditMode && inventory?.editingUserId === user?.id);
+  const isLockedByOtherUser = !!(inventory?.isInEditMode && inventory?.editingUserId !== user?.id);
 
   return (
     <InventoryContext.Provider
@@ -76,6 +83,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         setItemRecordLimit,
         totalItems,
         setTotalItems,
+        isCurrentUserEditing,
+        isLockedByOtherUser,
       }}
     >
       {children}

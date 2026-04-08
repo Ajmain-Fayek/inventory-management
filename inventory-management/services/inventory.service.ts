@@ -34,4 +34,9 @@ export const inventoryService = {
     const response = await axiosInstance.put(`/api/v1/inventories/${inventoryId}/release`);
     return response.data;
   }),
+
+  deleteInventory: catchAsync(async (inventoryId: string) => {
+    const response = await axiosInstance.delete(`/api/v1/inventories/${inventoryId}`);
+    return response.data;
+  }),
 };

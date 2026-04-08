@@ -132,6 +132,7 @@ export default function RegisterPage() {
                 color="secondary"
                 type="submit"
                 isLoading={isLoading}
+                isDisabled={isSocialLoading !== null || isLoading}
                 className="mt-4 font-semibold shadow-lg shadow-secondary/30"
               >
                 {t("auth.register")}
@@ -149,7 +150,7 @@ export default function RegisterPage() {
                 variant="flat"
                 className="bg-default-100/50 hover:bg-default-200/50 flex-1"
                 isLoading={isSocialLoading === "google"}
-                isDisabled={isSocialLoading !== null}
+                isDisabled={isSocialLoading !== null || isLoading}
                 onPress={handleGoogleLogin}
               >
                 {isSocialLoading !== "google" && <FcGoogle size={18} />}
@@ -158,7 +159,7 @@ export default function RegisterPage() {
                 variant="flat"
                 className="bg-default-100/50 hover:bg-default-200/50 flex-1"
                 isLoading={isSocialLoading === "facebook"}
-                isDisabled={isSocialLoading !== null}
+                isDisabled={isSocialLoading !== null || isLoading}
                 onPress={handleFacebookLogin}
               >
                 {isSocialLoading !== "facebook" && (

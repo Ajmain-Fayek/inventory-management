@@ -28,4 +28,14 @@ export const itemService = {
     );
     return response.data;
   }),
+
+  deleteItems: catchAsync(async (inventoryId: string, itemIds: string[]) => {
+    const results = await Promise.all(
+      itemIds.map((itemId) => axiosInstance.delete(`/api/v1/inventories/${inventoryId}/items/${itemId}`)),
+    );
+    return {
+      success: true,
+      data: results.map((r) => r.data),
+    };
+  }),
 };

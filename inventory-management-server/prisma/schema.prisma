@@ -247,6 +247,9 @@ model Item {
   inventoryId String
   inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
 
+  // Searchable custom ID (unique per inventory)
+  customId String?
+
   // Optimistic Lock
   isInEditMode  Boolean @default(false)
   editingUserId String?
@@ -280,6 +283,8 @@ model Item {
   customIdValues CustomIdValue?
 
   @@index([inventoryId])
+  @@index([customId])
+  @@unique([inventoryId, customId])
   @@map("item")
 }
 

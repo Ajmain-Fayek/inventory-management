@@ -9,5 +9,6 @@ router.post("/", authMiddleware, itemController.createItem);
 router.get("/", itemController.getItems);
 router.get("/:itemId", itemController.getItemById);
 router.put("/:itemId", authMiddleware, inventoryOwnerOrAdmin, itemController.updateItem);
+router.delete("/:itemId", authMiddleware, inventoryOwnerOrAdmin, itemController.deleteItem);
 
 export const ItemRoutes = router;

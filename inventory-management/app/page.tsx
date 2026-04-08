@@ -1,5 +1,6 @@
 "use client";
 
+import { inventoryService } from "@/services/inventory.service";
 import { useLanguage } from "@/context/LanguageContext";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
 import { Chip } from "@heroui/chip";
@@ -8,44 +9,72 @@ import { Tooltip } from "@heroui/tooltip";
 import { motion } from "framer-motion";
 import { FolderIcon, StarIcon, TagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { getErrorMessage } from "@/utils/errorParser";
 
-const latestInventories = [
-  { id: 1, name: "Office Hardware 2026", desc: "Laptops, monitors, and peripherals", creator: "Alice Smith", avatar: "https://i.pravatar.cc/150?u=1", date: "2 mins ago" },
-  { id: 2, name: "HR Documents", desc: "Employee handbooks and policies", creator: "Bob Jones", avatar: "https://i.pravatar.cc/150?u=2", date: "1 hour ago" },
-  { id: 3, name: "Central Library", desc: "History and Science books catalog", creator: "Carol White", avatar: "https://i.pravatar.cc/150?u=3", date: "5 hours ago" },
-];
-
-const popularInventories = [
-  { id: 1, name: "Main Warehouse", category: "Equipment", items: 1240, creator: "Dave Brown", avatar: "https://i.pravatar.cc/150?u=4" },
-  { id: 2, name: "Company Vehicles", category: "Transport", items: 45, creator: "Eve Black", avatar: "https://i.pravatar.cc/150?u=5" },
-  { id: 3, name: "Software Licenses", category: "IT", items: 890, creator: "Alice Smith", avatar: "https://i.pravatar.cc/150?u=1" },
-  { id: 4, name: "Office Furniture", category: "Furniture", items: 350, creator: "Carol White", avatar: "https://i.pravatar.cc/150?u=3" },
-  { id: 5, name: "Marketing Assets", category: "Digital", items: 5000, creator: "Frank Green", avatar: "https://i.pravatar.cc/150?u=6" },
-];
-
-const tags = [
-  { name: "Electronics", count: 12 },
-  { name: "Books", count: 8 },
-  { name: "Vehicles", count: 3 },
-  { name: "HR", count: 5 },
-  { name: "IT", count: 20 },
-  { name: "Furniture", count: 7 },
-  { name: "Digital", count: 15 },
-  { name: "Hardware", count: 11 },
-  { name: "Software", count: 9 },
-  { name: "Marketing", count: 4 },
-];
+type InventoryRow = {
+  id: string;
+  title: string;
+  description?: string;
+  categoryName?: string;
+  creator: string;
+  createdAt: string;
+  itemCount?: number;
+  inventoryTags: string[];
+};
 
 export default function Home() {
   const { t } = useLanguage();
   const router = useRouter();
+  const [inventories, setInventories] = useState<InventoryRow[]>([]);
+  const [error, setError] = useState("");
 
   const handleRowAction = (key: React.Key) => {
     router.push(`/inventory/${key}`);
   };
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const response = await inventoryService.getInventories(1, 50);
+        setInventories(response.data ?? []);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      }
+    };
+
+    load();
+  }, []);
+
+  const latestInventories = useMemo(
+    () =>
+      [...inventories]
+        .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+        .slice(0, 10),
+    [inventories],
+  );
+
+  const popularInventories = useMemo(
+    () => [...inventories].sort((a, b) => (b.itemCount ?? 0) - (a.itemCount ?? 0)).slice(0, 5),
+    [inventories],
+  );
+
+  const tags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const inv of inventories) {
+      for (const tag of inv.inventoryTags ?? []) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+  }, [inventories]);
+
   return (
     <div className="flex flex-col px-4 gap-10 py-8">
+      {error && <div className="bg-danger-50 text-danger-700 rounded-md px-3 py-2">{error}</div>}
       {/* Latest Inventories */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
@@ -58,7 +87,7 @@ export default function Home() {
             {t("home.latest")}
           </h2>
         </div>
-        <Table aria-label="Latest Inventories Table" className="shadow-lg" selectionMode="multiple" onRowAction={handleRowAction}>
+        <Table aria-label="Latest Inventories Table" className="shadow-lg" onRowAction={handleRowAction}>
           <TableHeader>
             <TableColumn>INVENTORY</TableColumn>
             <TableColumn>DESCRIPTION</TableColumn>
@@ -68,15 +97,17 @@ export default function Home() {
           <TableBody>
             {latestInventories.map((inv) => (
               <TableRow key={inv.id} className="cursor-pointer hover:bg-default-100/50 transition-colors">
-                <TableCell className="font-semibold">{inv.name}</TableCell>
-                <TableCell className="text-default-500">{inv.desc}</TableCell>
+                <TableCell className="font-semibold">{inv.title}</TableCell>
+                <TableCell className="text-default-500">{inv.description ?? "N/A"}</TableCell>
                 <TableCell>
-                  <User 
-                    name={inv.creator} 
-                    avatarProps={{ src: inv.avatar, size: "sm" }} 
+                  <User
+                    name={inv.creator}
+                    avatarProps={{ src: `https://i.pravatar.cc/150?u=${inv.creator}`, size: "sm" }}
                   />
                 </TableCell>
-                <TableCell className="text-default-400">{inv.date}</TableCell>
+                <TableCell className="text-default-400">
+                  {new Date(inv.createdAt).toLocaleDateString()}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -97,7 +128,7 @@ export default function Home() {
               {t("home.popular")}
             </h2>
           </div>
-          <Table aria-label="Popular Inventories Table" className="shadow-lg" selectionMode="multiple" onRowAction={handleRowAction}>
+          <Table aria-label="Popular Inventories Table" className="shadow-lg" onRowAction={handleRowAction}>
             <TableHeader>
               <TableColumn>INVENTORY</TableColumn>
               <TableColumn>CATEGORY</TableColumn>
@@ -107,15 +138,15 @@ export default function Home() {
             <TableBody>
               {popularInventories.map((inv) => (
                 <TableRow key={inv.id} className="cursor-pointer hover:bg-default-100/50 transition-colors">
-                  <TableCell className="font-semibold">{inv.name}</TableCell>
+                  <TableCell className="font-semibold">{inv.title}</TableCell>
                   <TableCell>
-                    <Chip size="sm" variant="dot" color="primary">{inv.category}</Chip>
+                    <Chip size="sm" variant="dot" color="primary">{inv.categoryName ?? "N/A"}</Chip>
                   </TableCell>
-                  <TableCell className="font-mono">{inv.items.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono">{(inv.itemCount ?? 0).toLocaleString()}</TableCell>
                   <TableCell>
-                    <User 
-                      name={inv.creator} 
-                      avatarProps={{ src: inv.avatar, size: "sm" }} 
+                    <User
+                      name={inv.creator}
+                      avatarProps={{ src: `https://i.pravatar.cc/150?u=${inv.creator}`, size: "sm" }}
                     />
                   </TableCell>
                 </TableRow>
@@ -145,6 +176,7 @@ export default function Home() {
                   variant="flat"
                   color={tag.count > 10 ? "secondary" : "default"}
                   size={tag.count > 10 ? "lg" : tag.count > 5 ? "md" : "sm"}
+                  onClick={() => router.push(`/search?q=${encodeURIComponent(tag.name)}`)}
                 >
                   {tag.name}
                 </Chip>

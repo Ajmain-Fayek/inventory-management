@@ -54,7 +54,9 @@ const getItems = async (inventoryId: string, options?: { page: number; recordLim
     const { inventory, customIdValues, ...rest } = item;
 
     return {
-      customId: assembleCustomId(inventory.customIdTemplates!, customIdValues!),
+      customId:
+        (rest as { customId?: string }).customId ??
+        assembleCustomId(inventory.customIdTemplates!, customIdValues!),
       inventoryTitle: inventory.title,
       ...rest,
     };
@@ -107,7 +109,9 @@ const getItemById = async (itemId: string) => {
   const { inventory, customIdValues, ...rest } = item;
 
   return {
-    customId: assembleCustomId(inventory.customIdTemplates!, customIdValues!),
+    customId:
+      (rest as { customId?: string }).customId ??
+      assembleCustomId(inventory.customIdTemplates!, customIdValues!),
     inventoryTitle: inventory.title,
     ...rest,
   };
@@ -150,12 +154,23 @@ const createItem = async (inventoryId: string, payload) => {
     const createItem = await tx.item.create({
       data: {
         inventoryId,
+        // will be updated after customIdValues are created
+        customId: "",
         ...payload,
       },
       include: {
         inventory: {
           select: {
             title: true,
+            customIdTemplates: {
+              omit: {
+                id: true,
+                inventoryId: true,
+                createdAt: true,
+                updatedAt: true,
+                version: true,
+              },
+            },
           },
         },
       },
@@ -174,13 +189,27 @@ const createItem = async (inventoryId: string, payload) => {
       },
     });
 
-    return { createItem, createCustomId, customIdTemplate };
+    const computedCustomId = assembleCustomId(createItem.inventory.customIdTemplates!, createCustomId);
+
+    await tx.item.update({
+      where: { id: createItem.id },
+      data: { customId: computedCustomId } as any,
+    });
+
+    const { customId: _, ...createItemRest } = createItem as typeof createItem & { customId?: string };
+    return {
+      createItem: { ...createItemRest, customId: computedCustomId },
+      createCustomId,
+      customIdTemplate,
+    };
   });
 
-  const { inventory, ...rest } = result.createItem;
+  const { inventory, customId: computedCustomId, ...rest } = result.createItem as typeof result.createItem & {
+    customId: string;
+  };
 
   return {
-    customId: assembleCustomId(result.customIdTemplate!, result.createCustomId!),
+    customId: computedCustomId,
     inventoryTitle: inventory.title,
     ...rest,
   };
@@ -188,12 +217,35 @@ const createItem = async (inventoryId: string, payload) => {
 
 // @ts-expect-error/no-explicit-any (payload)
 const updateItem = async (itemId: string, payload) => {
+  const expectedVersion = payload?.version;
+  if (typeof expectedVersion !== "number") {
+    throw new AppError("Missing item version for optimistic locking", status.BAD_REQUEST);
+  }
+
+  const { version, ...updatePayload } = payload;
+  const { customId, ...restUpdatePayload } = updatePayload;
+
   const result = await prisma.$transaction(async (tx) => {
-    const updateItem = await tx.item.update({
+    const updateData: any = {
+      ...restUpdatePayload,
+      ...(typeof customId === "string" ? { customId } : {}),
+      version: { increment: 1 },
+    };
+
+    const updateResult = await tx.item.updateMany({
+      where: { id: itemId, version: expectedVersion },
+      data: updateData,
+    });
+
+    if (updateResult.count === 0) {
+      throw new AppError(
+        "This item was updated by another user. Refresh and try your changes again.",
+        status.CONFLICT,
+      );
+    }
+
+    const updatedItem = await tx.item.findUnique({
       where: { id: itemId },
-      data: {
-        ...payload,
-      },
       include: {
         customIdValues: {
           omit: {
@@ -220,16 +272,41 @@ const updateItem = async (itemId: string, payload) => {
         },
       },
     });
-    return updateItem;
+
+    if (!updatedItem) {
+      throw new AppError("Item not found", status.NOT_FOUND);
+    }
+
+    return updatedItem;
   });
 
   const { inventory, customIdValues, ...rest } = result;
 
   return {
-    customId: assembleCustomId(inventory.customIdTemplates!, customIdValues!),
+    customId:
+      (rest as { customId?: string }).customId ??
+      assembleCustomId(inventory.customIdTemplates!, customIdValues!),
     inventoryTitle: inventory.title,
     ...rest,
   };
+};
+
+const deleteItem = async (itemId: string) => {
+  try {
+    await prisma.item.delete({
+      where: { id: itemId },
+    });
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2025"
+    ) {
+      throw new AppError("Item not found", status.NOT_FOUND);
+    }
+    throw error;
+  }
 };
 
 export const ItemService = {
@@ -237,4 +314,5 @@ export const ItemService = {
   getItems,
   getItemById,
   updateItem,
+  deleteItem,
 };

@@ -10,6 +10,7 @@ import { useInventory } from "@/context/InventoryContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useParams, useRouter } from "next/navigation";
 import { itemService } from "@/services/item.service";
+import { getErrorMessage } from "@/utils/errorParser";
 import { Select, SelectItem } from "@heroui/select";
 import { useEffect, useState } from "react";
 import { Textarea } from "@heroui/input";
@@ -31,12 +32,15 @@ export default function InventoryPage() {
     setTotalItems,
     items,
     setItems,
+    isLockedByOtherUser,
   } = useInventory();
   const router = useRouter();
   const { id } = useParams();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set());
+  const [deletingItems, setDeletingItems] = useState(false);
+  const [error, setError] = useState("");
 
   const getInventories = async () => {
     const [_inventory, _items] = await Promise.all([
@@ -52,6 +56,8 @@ export default function InventoryPage() {
     setTotalItems(meta.total);
     setLoading(false);
   };
+
+  console.log(inventory);
 
   useEffect(() => {
     getInventories();
@@ -96,6 +102,7 @@ export default function InventoryPage() {
           <p className="text-default-500">{inventory?.description}</p>
         </div>
         <Button
+          isDisabled={isLockedByOtherUser}
           color="secondary"
           size="sm"
           onPress={() => router.push(`/inventory/${id}/update-inventory`)}
@@ -104,6 +111,14 @@ export default function InventoryPage() {
           Edit
         </Button>
       </motion.div>
+
+      {isLockedByOtherUser && (
+        <div className="px-2 bg-red-50 text-red-600 text-center w-fit">
+          This inventory is currently read-only because another user is editing it. Please try again
+          in a few minutes.
+        </div>
+      )}
+      {error && <div className="px-3 py-2 rounded-md bg-danger-50 text-danger-700">{error}</div>}
 
       <Tabs
         aria-label="Inventory Options"
@@ -131,9 +146,25 @@ export default function InventoryPage() {
                     `/inventory/${id}/item/${Array.from(selectedItemKeys)[0]}/update-item`,
                   );
               }}
-              onDelete={() => console.log("Delete items", Array.from(selectedItemKeys))}
-              isEditDisabled={selectedItemKeys.size !== 1}
-              isDeleteDisabled={selectedItemKeys.size === 0}
+              onDelete={async () => {
+                if (selectedItemKeys.size === 0) return;
+                setDeletingItems(true);
+                setError("");
+                try {
+                  await itemService.deleteItems(id as string, Array.from(selectedItemKeys));
+                  setSelectedItemKeys(new Set());
+                  await getInventories();
+                } catch (err) {
+                  setError(getErrorMessage(err));
+                } finally {
+                  setDeletingItems(false);
+                }
+              }}
+              isEditDisabled={inventory?.isInEditMode === true || selectedItemKeys.size !== 1}
+              isDeleteDisabled={
+                inventory?.isInEditMode === true || selectedItemKeys.size === 0 || deletingItems
+              }
+              isAddDisabled={inventory?.isInEditMode === true}
             />
             {/* Filters and Rows Per Page Header */}
             <div className="flex justify-between items-center mb-4 gap-4">

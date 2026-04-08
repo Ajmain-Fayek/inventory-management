@@ -21,11 +21,19 @@ export default function UpdateItemPage() {
   const { id, itemId } = params;
   const router = useRouter();
   const { t } = useLanguage();
-  const { inventoryColumns, inventory, setInventoryColumns, setInventory, items } = useInventory();
+  const {
+    inventoryColumns,
+    inventory,
+    setInventoryColumns,
+    setInventory,
+    items,
+    isLockedByOtherUser,
+  } = useInventory();
   const [item, setItem] = useState<IItem>();
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<TSaveStatus>("idle");
   const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState("");
 
   const fetchItem = async () => {
     setLoading(true);
@@ -96,19 +104,28 @@ export default function UpdateItemPage() {
 
   const handleSubmit = async () => {
     setSaveStatus("saving");
+    setError("");
 
     const minWait = new Promise((resolve) => setTimeout(resolve, 3000));
 
     const [response] = await Promise.all([
-      itemService.updateItem(formData, id as string, itemId as string),
+      itemService.updateItem(
+        { ...formData, version: item?.version },
+        id as string,
+        itemId as string,
+      ),
       minWait,
     ]);
 
     if (response.success) {
+      if (response?.data?.version) {
+        setItem((prev) => (prev ? { ...prev, version: response.data.version } : prev));
+      }
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } else {
       setSaveStatus("error");
+      setError(response.message ?? "Failed to update item");
     }
   };
 
@@ -138,7 +155,7 @@ export default function UpdateItemPage() {
           color={saveStatus === "error" ? "danger" : "primary"}
           variant={saveStatus === "saved" ? "flat" : "solid"}
           onPress={handleSubmit}
-          isDisabled={saveStatus === "saving"}
+          isDisabled={isLockedByOtherUser || saveStatus === "saving"}
           startContent={
             saveStatus === "saving" ? <Spinner size="sm" color="white" /> : <Save size={16} />
           }
@@ -153,6 +170,14 @@ export default function UpdateItemPage() {
                 : "Save Item"}
         </Button>
       </motion.div>
+
+      {inventory?.isInEditMode && (
+        <div className="max-w-3xl px-2 bg-red-50 text-red-600 text-center w-fit">
+          This inventory is currently read-only because another user is editing it. Please try again
+          in a few minutes.
+        </div>
+      )}
+      {error && <div className="max-w-3xl px-3 py-2 bg-danger-50 text-danger-700 rounded-md">{error}</div>}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

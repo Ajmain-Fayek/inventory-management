@@ -22,7 +22,6 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>("en");
 
-  // Load from local storage if needed, omitted for now for simplicity
   useEffect(() => {
     const saved = localStorage.getItem("app-lang") as Language;
     if (saved && ["en", "pl"].includes(saved)) {
@@ -36,6 +35,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (dictionaries[language] as any)[key] || key;
   };
 

@@ -21,7 +21,7 @@ export interface IUserContextType {
   loadUser: () => void;
   removeUser: () => void;
   logout: () => Promise<void>;
-  refreshSession: (args: SessionType) => Promise<void>;
+  refreshSession: (args?: SessionType) => Promise<void>;
 }
 
 export const UserContext = createContext<IUserContextType | undefined>(undefined);
@@ -56,7 +56,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [removeUser]);
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (_sessionType?: SessionType) => {
     setIsLoading(true);
     try {
       const result = await authService.getCurrentUser();

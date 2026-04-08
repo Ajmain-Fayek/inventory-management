@@ -21,4 +21,7 @@
   .navbar-container {
     display: none !important;
   }
+  .warning {
+    display: none;
+  }
 }

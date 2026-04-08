@@ -3,46 +3,37 @@
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
 import { User as UserIcon, Book, Building, Laptop } from "lucide-react";
 import { GlobalToolbar } from "@/components/global-toolbar";
-// import { useLanguage } from "@/context/LanguageContext";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Chip } from "@heroui/chip";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useUser } from "@/context/UserContext";
+import { userService } from "@/services/user.service";
+import { inventoryService } from "@/services/inventory.service";
+import { getErrorMessage } from "@/utils/errorParser";
 
-const myInventories = [
-  {
-    id: "1",
-    name: "Personal Devices",
-    category: "Hardware",
-    items: 4,
-    isPublic: false,
-    icon: Laptop,
-  },
-  { id: "2", name: "Book Collection", category: "Books", items: 120, isPublic: true, icon: Book },
-];
+type ProfileInventory = {
+  id: string;
+  title: string;
+  categoryName: string | null;
+  itemCount: number;
+  isPublic: boolean;
+  creator?: string;
+};
 
-const writeAccessInventories = [
-  {
-    id: "3",
-    name: "Office Hardware 2026",
-    category: "Hardware",
-    items: 45,
-    owner: "Alice Smith",
-    icon: Building,
-  },
-  {
-    id: "4",
-    name: "Central Library",
-    category: "Books",
-    items: 8900,
-    owner: "Carol White",
-    icon: Book,
-  },
-];
+const ICONS = [Laptop, Book, Building];
 
 export default function ProfilePage() {
-  // const { t } = useLanguage();
+  const { user, isLoading } = useUser();
   const router = useRouter();
+  const [myInventories, setMyInventories] = useState<ProfileInventory[]>([]);
+  const [writeAccessInventories, setWriteAccessInventories] = useState<ProfileInventory[]>([]);
+  const [myFilter, setMyFilter] = useState("");
+  const [accessFilter, setAccessFilter] = useState("");
+  const [mySortBy, setMySortBy] = useState<"title" | "category">("title");
+  const [accessSortBy, setAccessSortBy] = useState<"title" | "category" | "owner">("title");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const [selectedMyInvKeys, setSelectedMyInvKeys] = useState<Set<string>>(new Set());
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -62,6 +53,66 @@ export default function ProfilePage() {
     setSelectedAccessInvKeys(new Set(Array.from(keys) as string[]));
   };
 
+  const loadProfile = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await userService.getProfileData();
+      setMyInventories(response.data.ownedInventories ?? []);
+      setWriteAccessInventories(response.data.writeAccessInventories ?? []);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+    loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user]);
+
+  const filteredMyInventories = [...myInventories]
+    .filter((inv) => {
+      const q = myFilter.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        inv.title.toLowerCase().includes(q) ||
+        (inv.categoryName ?? "").toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (mySortBy === "category") {
+        return (a.categoryName ?? "").localeCompare(b.categoryName ?? "");
+      }
+      return a.title.localeCompare(b.title);
+    });
+
+  const filteredAccessInventories = [...writeAccessInventories]
+    .filter((inv) => {
+      const q = accessFilter.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        inv.title.toLowerCase().includes(q) ||
+        (inv.categoryName ?? "").toLowerCase().includes(q) ||
+        (inv.creator ?? "").toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (accessSortBy === "category") {
+        return (a.categoryName ?? "").localeCompare(b.categoryName ?? "");
+      }
+      if (accessSortBy === "owner") {
+        return (a.creator ?? "").localeCompare(b.creator ?? "");
+      }
+      return a.title.localeCompare(b.title);
+    });
+
   return (
     <div className="flex flex-col gap-10 py-8 px-4">
       <motion.div
@@ -73,10 +124,12 @@ export default function ProfilePage() {
           <UserIcon size={40} />
         </div>
         <div>
-          <h1 className="text-3xl font-bold">John Doe</h1>
-          <p className="text-default-500">john.doe@example.com</p>
+          <h1 className="text-3xl font-bold">{user?.name ?? "User"}</h1>
+          <p className="text-default-500">{user?.email ?? ""}</p>
         </div>
       </motion.div>
+      {error && <div className="px-3 py-2 rounded-md bg-danger-50 text-danger-700">{error}</div>}
+      {loading && <div className="text-default-500">Loading profile...</div>}
 
       <motion.section
         initial={{ opacity: 0, x: -20 }}
@@ -85,12 +138,43 @@ export default function ProfilePage() {
       >
         <GlobalToolbar
           title="Inventories I Own"
-          onAdd={() => console.log("Add clicked")}
-          onEdit={() => console.log("Edit clicked", Array.from(selectedMyInvKeys))}
-          onDelete={() => console.log("Delete clicked", Array.from(selectedMyInvKeys))}
+          onAdd={() => router.push("/inventory/create")}
+          onEdit={() => {
+            if (selectedMyInvKeys.size === 1) {
+              router.push(`/inventory/${Array.from(selectedMyInvKeys)[0]}/update-inventory`);
+            }
+          }}
+          onDelete={async () => {
+            if (selectedMyInvKeys.size === 0) return;
+            try {
+              await Promise.all(
+                Array.from(selectedMyInvKeys).map((id) => inventoryService.deleteInventory(id)),
+              );
+              setSelectedMyInvKeys(new Set());
+              await loadProfile();
+            } catch (err) {
+              setError(getErrorMessage(err));
+            }
+          }}
           isEditDisabled={selectedMyInvKeys.size !== 1}
           isDeleteDisabled={selectedMyInvKeys.size === 0}
         />
+        <div className="mb-3 flex gap-2">
+          <input
+            className="border border-default-300 rounded-md px-2 py-1 text-sm w-full"
+            placeholder="Filter by title or category"
+            value={myFilter}
+            onChange={(e) => setMyFilter(e.target.value)}
+          />
+          <select
+            className="border border-default-300 rounded-md px-2 py-1 text-sm"
+            value={mySortBy}
+            onChange={(e) => setMySortBy(e.target.value as "title" | "category")}
+          >
+            <option value="title">Sort: Title</option>
+            <option value="category">Sort: Category</option>
+          </select>
+        </div>
         <Table
           aria-label="My Inventories"
           selectionMode="multiple"
@@ -106,16 +190,19 @@ export default function ProfilePage() {
             <TableColumn>VISIBILITY</TableColumn>
           </TableHeader>
           <TableBody>
-            {myInventories.map((inv) => (
+            {filteredMyInventories.map((inv) => (
               <TableRow key={inv.id} className="cursor-pointer">
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <inv.icon size={18} className="text-primary" />
-                    <span className="font-semibold">{inv.name}</span>
+                    {(() => {
+                      const Icon = ICONS[Number(inv.id.replace(/\D/g, "")) % ICONS.length] ?? Laptop;
+                      return <Icon size={18} className="text-primary" />;
+                    })()}
+                    <span className="font-semibold">{inv.title}</span>
                   </div>
                 </TableCell>
-                <TableCell>{inv.category}</TableCell>
-                <TableCell className="font-mono">{inv.items}</TableCell>
+                <TableCell>{inv.categoryName ?? "N/A"}</TableCell>
+                <TableCell className="font-mono">{inv.itemCount}</TableCell>
                 <TableCell>
                   <Chip size="sm" color={inv.isPublic ? "success" : "default"} variant="flat">
                     {inv.isPublic ? "Public" : "Private"}
@@ -138,6 +225,23 @@ export default function ProfilePage() {
             Inventories with Write Access
           </h2>
         </div>
+        <div className="mb-3 flex gap-2">
+          <input
+            className="border border-default-300 rounded-md px-2 py-1 text-sm w-full"
+            placeholder="Filter by title, category, or owner"
+            value={accessFilter}
+            onChange={(e) => setAccessFilter(e.target.value)}
+          />
+          <select
+            className="border border-default-300 rounded-md px-2 py-1 text-sm"
+            value={accessSortBy}
+            onChange={(e) => setAccessSortBy(e.target.value as "title" | "category" | "owner")}
+          >
+            <option value="title">Sort: Title</option>
+            <option value="category">Sort: Category</option>
+            <option value="owner">Sort: Owner</option>
+          </select>
+        </div>
         <Table
           aria-label="Write Access Inventories"
           selectionMode="multiple"
@@ -153,17 +257,20 @@ export default function ProfilePage() {
             <TableColumn>OWNER</TableColumn>
           </TableHeader>
           <TableBody>
-            {writeAccessInventories.map((inv) => (
+            {filteredAccessInventories.map((inv) => (
               <TableRow key={inv.id} className="cursor-pointer">
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <inv.icon size={18} className="text-secondary" />
-                    <span className="font-semibold">{inv.name}</span>
+                    {(() => {
+                      const Icon = ICONS[Number(inv.id.replace(/\D/g, "")) % ICONS.length] ?? Book;
+                      return <Icon size={18} className="text-secondary" />;
+                    })()}
+                    <span className="font-semibold">{inv.title}</span>
                   </div>
                 </TableCell>
-                <TableCell>{inv.category}</TableCell>
-                <TableCell className="font-mono">{inv.items}</TableCell>
-                <TableCell>{inv.owner}</TableCell>
+                <TableCell>{inv.categoryName ?? "N/A"}</TableCell>
+                <TableCell className="font-mono">{inv.itemCount}</TableCell>
+                <TableCell>{inv.creator ?? "N/A"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

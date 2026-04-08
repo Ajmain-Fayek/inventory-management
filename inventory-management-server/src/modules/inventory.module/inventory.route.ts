@@ -37,5 +37,11 @@ router.put(
   inventoryOwnerOrAdmin,
   inventoryController.updateInventory,
 );
+router.delete(
+  "/:inventoryId",
+  authMiddleware,
+  inventoryOwnerOrAdmin,
+  inventoryController.deleteInventory,
+);
 
 export const InventoryRoutes = router;
